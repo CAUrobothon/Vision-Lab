@@ -1,0 +1,27 @@
+[project]
+name = "robothon-vision-interface"
+version = "0.1.0"
+description = "Vision -> calibration -> kinematics contract for the 2026 robothon pick-and-place (pure stdlib)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.scripts]
+vision-fake = "vision_interface.fake:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["vision_interface"]
+
+[tool.setuptools.package-data]
+vision_interface = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

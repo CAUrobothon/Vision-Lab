@@ -1,0 +1,108 @@
+/* Criteria fields, the provisional label, Δ lines and verdict tags (parts.tsx): used by the 채점
+   page and by the workbench's live score, so they load with whichever screen comes first. */
+
+.cf {
+  display: grid;
+  gap: 8px;
+}
+
+.cf-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.cf-title {
+  min-width: 52px;
+  color: var(--text-2);
+  font-size: var(--fs-s);
+  font-weight: 600;
+}
+
+.cf-gap {
+  margin-left: 10px;
+}
+
+.cf-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-2);
+  font-size: var(--fs-s);
+  white-space: nowrap;
+}
+
+.cf-field .num-input {
+  width: 60px;
+  height: 26px;
+}
+
+.cf-field.changed .cf-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.cf-field.changed .num-input {
+  border-color: var(--text-2);
+}
+
+.cf-unit {
+  color: var(--text-3);
+}
+
+.provisional {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px dashed var(--text-3);
+  border-radius: 2px;
+  color: var(--text);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+.cf-reset {
+  margin-left: auto;
+}
+
+.sc-diff {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  margin-top: 4px;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+.sc-ci {
+  color: var(--text-3);
+}
+
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.verdict.good {
+  color: var(--good);
+}
+
+.verdict.bad {
+  color: var(--bad);
+}
+
+.verdict.flat {
+  border-color: var(--seam-strong);
+  color: var(--text-2);
+}
+

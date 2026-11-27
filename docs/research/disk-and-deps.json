@@ -1,0 +1,749 @@
+{
+  "free_gb": 43.3,
+  "caches": [
+    {
+      "path": "/Users/limgiheon/.cache/uv",
+      "gb": 5.05,
+      "safe_to_prune": "Re-downloadable, but do NOT prune before building the lab. It holds the exact wheels the lab needs (torch 2.15.0 cp312, torchvision, ultralytics, opencv-python, rfdetr, supervision, transformers, av, scipy). The 5.05 GB is apparent size: about 2.1 GB of it is 11 cached tool environments that are APFS clones of the cached wheels, so real unique use is nearer 3 GB.",
+      "how": "uv cache prune (removes dangling entries and cached environments; frees little real space, roughly 0.1-0.3 GB, because the environments are clones). uv cache clean would free at most about 3 GB and force a 265-311 MB re-download for the lab."
+    },
+    {
+      "path": "/Users/limgiheon/.cache/huggingface",
+      "gb": 2.69,
+      "safe_to_prune": "Re-downloadable, but both repositories (KURE-v1, KURE-Reranker-nano) belong to the user's other project. Ask before removing. Frees 2.75 GB.",
+      "how": "hf cache delete (or remove the two models--nlpai-lab--* folders under hub/)"
+    },
+    {
+      "path": "/Users/limgiheon/Library/pnpm/store/v11",
+      "gb": 0.87,
+      "safe_to_prune": "Yes, re-downloadable. Only unreferenced packages are removed and files are shared with projects, so the gain is small and unknown (under 0.87 GB).",
+      "how": "pnpm store prune"
+    },
+    {
+      "path": "/Users/limgiheon/.npm",
+      "gb": 2.87,
+      "safe_to_prune": "Yes, fully re-downloadable. _cacache is 2.46 GB, _npx is 0.41 GB (npx-launched tools and MCP servers re-download on next start).",
+      "how": "npm cache clean --force (about 2.46 GB); rm -rf ~/.npm/_npx (about 0.41 GB)"
+    },
+    {
+      "path": "/Users/limgiheon/Library/Caches/Homebrew",
+      "gb": 0.22,
+      "safe_to_prune": "Yes. The dry run reports about 508 MB freed in total, because it also removes old portable-ruby and outdated formula versions outside this folder.",
+      "how": "brew cleanup --prune=all (dry run: brew cleanup -n --prune=all)"
+    },
+    {
+      "path": "/Users/limgiheon/Library/Caches/ms-playwright",
+      "gb": 1.1,
+      "safe_to_prune": "Re-downloadable. Two Chromium revisions are present: 1243 (359 MB + 195 MB headless shell) and 1248 (366 MB + 203 MB). Removing only revision 1243 frees about 0.55 GB. Keep 1248 if browser testing of the web app is planned.",
+      "how": "rm -rf the chromium-1243 and chromium_headless_shell-1243 folders; restore with npx playwright install chromium"
+    },
+    {
+      "path": "/Users/limgiheon/Library/Caches/ms-playwright-mcp",
+      "gb": 0.27,
+      "safe_to_prune": "Re-downloadable, but it is the browser used by the Playwright MCP server. Leave it if that server is in use.",
+      "how": "rm -rf the folder; the MCP server re-downloads its browser"
+    },
+    {
+      "path": "/Users/limgiheon/Library/Caches/Google",
+      "gb": 2.75,
+      "safe_to_prune": "Yes, browser cache. Quit Chrome first. Frees up to 2.75 GB and regrows with use.",
+      "how": "Chrome: Clear browsing data, cached images and files; or delete the folder with Chrome closed"
+    },
+    {
+      "path": "/Users/limgiheon/Library/Caches/com.microsoft.VSCode.ShipIt",
+      "gb": 1.58,
+      "safe_to_prune": "Yes, VS Code updater staging files. Quit VS Code first and do not delete during an update. Frees about 1.58 GB.",
+      "how": "rm -rf ~/Library/Caches/com.microsoft.VSCode.ShipIt"
+    },
+    {
+      "path": "/Users/limgiheon/Library/Caches/pip",
+      "gb": 1.13,
+      "safe_to_prune": "Yes, fully re-downloadable and not used by uv. Frees about 1.13 GB.",
+      "how": "pip cache purge"
+    },
+    {
+      "path": "/Users/limgiheon/Library/Caches/JetBrains",
+      "gb": 0.74,
+      "safe_to_prune": "Yes, IDE indexes and caches, rebuilt on next start (slower first launch).",
+      "how": "Close the IDE, then delete the folder (or File > Invalidate Caches)"
+    },
+    {
+      "path": "/Users/limgiheon/Library/Caches/vscode-cpptools",
+      "gb": 0.31,
+      "safe_to_prune": "Yes, IntelliSense cache, rebuilt on demand.",
+      "how": "rm -rf the folder with VS Code closed"
+    },
+    {
+      "path": "/Users/limgiheon/Library/Caches/pnpm",
+      "gb": 0.23,
+      "safe_to_prune": "Yes, registry metadata cache.",
+      "how": "rm -rf ~/Library/Caches/pnpm"
+    },
+    {
+      "path": "/Users/limgiheon/Library/Caches/Comet",
+      "gb": 0.19,
+      "safe_to_prune": "Yes, browser cache.",
+      "how": "Clear cache inside the browser"
+    },
+    {
+      "path": "/Users/limgiheon/.cache/codex-runtimes",
+      "gb": 1.67,
+      "safe_to_prune": "Uncertain. Runtimes of another CLI tool, probably re-downloaded by that tool. Remove only if that tool is no longer used.",
+      "how": "rm -rf ~/.cache/codex-runtimes"
+    },
+    {
+      "path": "/Users/limgiheon/.cache/puppeteer",
+      "gb": 0.46,
+      "safe_to_prune": "Re-downloadable browser binaries.",
+      "how": "rm -rf ~/.cache/puppeteer; restore with npx puppeteer browsers install chrome"
+    },
+    {
+      "path": "/Users/limgiheon/.cache/chrome-devtools-mcp",
+      "gb": 0.3,
+      "safe_to_prune": "Re-downloadable, used by the Chrome DevTools MCP server. Leave it if that server is in use.",
+      "how": "rm -rf the folder"
+    },
+    {
+      "path": "/Users/limgiheon/.cache/open-image-models",
+      "gb": 0.15,
+      "safe_to_prune": "Re-downloadable ONNX models of the user's other project (licence plates, RF-DETR nano COCO). Ask first.",
+      "how": "rm -rf the folder"
+    },
+    {
+      "path": "/Users/limgiheon/.cache/node",
+      "gb": 0.04,
+      "safe_to_prune": "Yes, negligible. The remaining entries under ~/.cache (gitstatus, vscode-ripgrep, p10k dump) are about 0.",
+      "how": "rm -rf ~/.cache/node"
+    },
+    {
+      "path": "/Users/limgiheon/.roboflow/models",
+      "gb": 0.7,
+      "safe_to_prune": "No, keep. Not a cache in the asked list, but it already holds RF-DETR detection weights (nano, small) the lab can reuse.",
+      "how": "n/a"
+    },
+    {
+      "path": "/Users/limgiheon/.Trash",
+      "gb": 0,
+      "safe_to_prune": "Was 18.82 GB at 03:09 KST and 0 GB at 03:11 KST. It was emptied during the probe by someone else, not by this probe.",
+      "how": "n/a (already empty)"
+    },
+    {
+      "path": "/Users/limgiheon/Library/Containers/com.docker.docker (Docker.raw)",
+      "gb": 21.7,
+      "safe_to_prune": "Not a cache: Docker disk image, 21.7 GB on disk. Reclaimable only by deleting Docker images and volumes, which is the user's decision.",
+      "how": "docker system prune -a --volumes, then reduce the disk image size in Docker Desktop settings"
+    },
+    {
+      "path": "/System/Volumes/VM (swap files)",
+      "gb": 11,
+      "safe_to_prune": "Not prunable by hand. 11 swap files of 1 GB each, 10.2 GB in use during the probe. They share the same APFS container, so they reduce free space.",
+      "how": "Close memory-heavy apps or reboot"
+    }
+  ],
+  "already_cached": [
+    "torch==2.15.0",
+    "torchvision==0.29.2",
+    "ultralytics==8.4.215",
+    "ultralytics-thop==2.2.5",
+    "ultralytics-platform==0.1.111",
+    "opencv-python==5.1.0.95",
+    "opencv-python==5.0.0.93",
+    "opencv-python-headless==4.14.0.94",
+    "transformers==5.17.0",
+    "tokenizers==0.23.2",
+    "safetensors==0.8.0",
+    "huggingface-hub==1.33.0",
+    "huggingface-hub==1.16.1",
+    "hf-xet==1.6.0",
+    "supervision==0.31.5",
+    "rfdetr==1.11.2",
+    "numpy==2.5.3",
+    "numpy==2.0.2",
+    "scipy==1.18.1",
+    "onnxruntime==1.30.0",
+    "onnx==1.23.2",
+    "pillow==13.0.0",
+    "pillow==12.3.0",
+    "av==19.0.2",
+    "matplotlib==3.11.2",
+    "polars==2.1.0",
+    "polars-runtime-32==2.1.0",
+    "sympy==1.14.0",
+    "networkx==3.7",
+    "scikit-learn==1.9.1",
+    "shapely==2.2.0",
+    "trackers==2.6.1",
+    "fastapi==0.142.2",
+    "fastapi==0.138.1",
+    "uvicorn==0.54.0",
+    "starlette==1.7.0",
+    "pydantic==2.13.5",
+    "pydantic-core==2.46.5",
+    "python-multipart==0.0.32",
+    "sqlalchemy==2.1.2",
+    "uvloop==0.23.0",
+    "watchfiles==1.3.0",
+    "websockets==17.1",
+    "httptools==0.8.0"
+  ],
+  "hf_models_present": [
+    "models--nlpai-lab--KURE-v1 (2182.2 MB)",
+    "models--nlpai-lab--KURE-Reranker-nano (570.7 MB)"
+  ],
+  "weight_files_present": [
+    "/Users/limgiheon/Library/Application Support/Ultralytics: no weight files, only settings.json (512 bytes)",
+    "/Users/limgiheon/.roboflow/models/rf-detr-nano.pth (349.3 MB, RF-DETR detection, COCO)",
+    "/Users/limgiheon/.roboflow/models/rf-detr-small.pth (368.2 MB, RF-DETR detection, COCO)",
+    "/Users/limgiheon/.cache/open-image-models/rf-detr-nano-384-coco/rf-detr-nano-384-coco.onnx (114.4 MB)",
+    "/Users/limgiheon/.cache/open-image-models/yolo-v9-s-608-license-plate-end2end/yolo-v9-s-608-license-plates-end2end.onnx (27.3 MB, other project)",
+    "/Users/limgiheon/.cache/open-image-models/yolo-v9-t-384-license-plate-end2end/yolo-v9-t-384-license-plates-end2end.onnx (7.4 MB, other project)",
+    "/Users/limgiheon/Desktop/캡스톤/capstone4-2/models/yolo11x_plate-detect.pt (109.1 MB, other project's licence-plate detector, not usable for cubes)",
+    "/Users/limgiheon/Desktop/캡스톤/capstone4-2/models/yolo11x_plate-detect.onnx (216.9 MB, same)",
+    "/Users/limgiheon/Desktop/캡스톤/YOLO_finetuning/yolo11x_plate-detect.pt (109.1 MB, duplicate of the above)",
+    "No YOLO26, YOLOE, FastSAM, MobileSAM, SAM 2.1, SAM 3, Grounding DINO or OWLv2 weights found anywhere under the home folder"
+  ],
+  "resolutions": [
+    {
+      "set": "A core (fastapi, uvicorn[standard], python-multipart, sqlmodel, pydantic, numpy, opencv-python-headless, pillow, av)",
+      "python": "3.12",
+      "ok": true,
+      "key_versions": "fastapi 0.165.0, uvicorn 0.54.0, starlette 1.10.0, python-multipart 0.0.34, sqlmodel 0.0.50, sqlalchemy 2.1.9, pydantic 2.14.4, numpy 2.5.5, opencv-python-headless 5.1.0.95, pillow 13.0.0, av 19.0.2 (27 packages, wheels only)",
+      "conflicts": "None. With the literal flags, uv assumes a macOS 13.0 floor and picks av 15.1.0 and opencv-python-headless 5.0.0.93 instead; the versions listed are with MACOSX_DEPLOYMENT_TARGET=15.0, matching this Mac (15.7.9). Note OpenCV is major version 5.",
+      "new_download_mb": 35.6,
+      "new_on_disk_mb": 105.5
+    },
+    {
+      "set": "A core",
+      "python": "3.13",
+      "ok": true,
+      "key_versions": "Identical versions to 3.12",
+      "conflicts": "None. cp313 builds of pillow and uvloop are not cached.",
+      "new_download_mb": 41.6,
+      "new_on_disk_mb": 121.1
+    },
+    {
+      "set": "B = A + torch, torchvision, ultralytics",
+      "python": "3.12",
+      "ok": true,
+      "key_versions": "torch 2.15.0, torchvision 0.29.2, ultralytics 8.4.218, opencv-python 5.1.0.95 AND opencv-python-headless 5.1.0.95, polars 2.1.0, matplotlib 3.11.2, numpy 2.5.5 (60 packages)",
+      "conflicts": "Yes, the known OpenCV clash: ultralytics requires opencv-python, so both OpenCV distributions are resolved. uv reports no conflict, but both install the same site-packages/cv2 folder, so the last one installed overwrites the other and uninstalling either breaks cv2. With the literal flags (macOS 13.0 floor) torch drops to 2.11.0 and torchvision to 0.26.0, because torch 2.15.0 wheels are tagged macosx_14_0; that is a flag artefact, not a real pin.",
+      "new_download_mb": 37.9,
+      "new_on_disk_mb": 112.5
+    },
+    {
+      "set": "B = A + torch, torchvision, ultralytics",
+      "python": "3.13",
+      "ok": true,
+      "key_versions": "Identical versions to 3.12",
+      "conflicts": "Same OpenCV clash. The torch cp313 wheel is not cached (132 MB download, 538 MB on disk), nor are cp313 matplotlib, numpy, pillow.",
+      "new_download_mb": 188.6,
+      "new_on_disk_mb": 705
+    },
+    {
+      "set": "C = B + rfdetr + supervision",
+      "python": "3.12",
+      "ok": true,
+      "key_versions": "rfdetr 1.12.1, supervision 0.32.1, transformers 5.24.1 (pulled in by rfdetr, which needs >=5.1,<6), huggingface-hub 2.4.0, tokenizers 0.23.3, scipy 1.18.1, torch 2.15.0 (81 packages)",
+      "conflicts": "No new conflicts and no downgrades. supervision now depends on av, not OpenCV; rfdetr base install needs no OpenCV. Training with rfdetr needs the [train] extra (pytorch_lightning, torchmetrics and others), which was not sized.",
+      "new_download_mb": 60.1,
+      "new_on_disk_mb": 191.4
+    },
+    {
+      "set": "C = B + rfdetr + supervision",
+      "python": "3.13",
+      "ok": true,
+      "key_versions": "Identical versions to 3.12",
+      "conflicts": "None beyond B. torch and scipy cp313 wheels are not cached.",
+      "new_download_mb": 230.3,
+      "new_on_disk_mb": 851.1
+    },
+    {
+      "set": "D = C + transformers + accelerate + timm",
+      "python": "3.12",
+      "ok": true,
+      "key_versions": "Same as C plus accelerate 1.16.0 and timm 1.0.31 (83 packages). transformers was already in C.",
+      "conflicts": "None. Grounding DINO, OWLv2, SAM, SAM 2 and SAM 3 classes ship in transformers 5.x and need neither timm nor accelerate; OWLv2 image processing needs scipy, which supervision already brings. If the uv cache were empty the whole set would be 337.5 MB to download and about 1235 MB on disk.",
+      "new_download_mb": 63.1,
+      "new_on_disk_mb": 202.4
+    },
+    {
+      "set": "D = C + transformers + accelerate + timm",
+      "python": "3.13",
+      "ok": true,
+      "key_versions": "Identical versions to 3.12",
+      "conflicts": "None beyond B.",
+      "new_download_mb": 233.3,
+      "new_on_disk_mb": 862.1
+    },
+    {
+      "set": "L-pin (recommended lean): A with opencv-python instead of headless + torch, torchvision, ultralytics, pinned to cached versions",
+      "python": "3.12",
+      "ok": true,
+      "key_versions": "torch 2.15.0, torchvision 0.29.2, ultralytics 8.4.215, opencv-python 5.1.0.95 (only one OpenCV), numpy 2.5.3, av 19.0.2, pillow 13.0.0, fastapi 0.142.2, uvicorn 0.54.0, pydantic 2.13.5, sqlmodel 0.0.50 (59 packages)",
+      "conflicts": "None. Only sqlmodel is missing from the cache. Unpinned (latest) the same set needs 13.3 MB download and 46.6 MB on disk.",
+      "new_download_mb": 0.03,
+      "new_on_disk_mb": 0.1
+    },
+    {
+      "set": "F-pin (recommended full, one environment): L + rfdetr, supervision, transformers, accelerate, timm, pinned to cached versions",
+      "python": "3.12",
+      "ok": true,
+      "key_versions": "rfdetr 1.11.2, supervision 0.31.5, transformers 5.17.0, huggingface-hub 1.33.0, tokenizers 0.23.2, scipy 1.18.1, timm 1.0.31, accelerate 1.16.0, torch 2.15.0, ultralytics 8.4.215 (79 packages)",
+      "conflicts": "None. Only timm, accelerate and sqlmodel are new. Unpinned (latest) the same set needs 38.5 MB download and 136.5 MB on disk.",
+      "new_download_mb": 3.1,
+      "new_on_disk_mb": 11
+    },
+    {
+      "set": "H (headless alternative): D with ultralytics-opencv-headless in place of ultralytics",
+      "python": "3.12",
+      "ok": true,
+      "key_versions": "ultralytics-opencv-headless 8.4.218, opencv-python-headless 5.1.0.95 only (opencv-python is not pulled in), otherwise as D (82 packages)",
+      "conflicts": "None. This is the clean way to keep headless OpenCV, but opencv-python-headless 5.1.0.95 is not cached (24.6 MB download, 65.9 MB on disk) and on macOS it is the same size as opencv-python, so it brings no benefit here.",
+      "new_download_mb": 63.1,
+      "new_on_disk_mb": 202.4
+    },
+    {
+      "set": "E-pin: L-pin + clip from git (needed for YOLOE text prompts)",
+      "python": "3.12",
+      "ok": true,
+      "key_versions": "clip 1.0 at git commit 7ffa84b (github.com/ultralytics/CLIP), ftfy 6.3.1, wcwidth 0.9.5, regex 2026.9.29 and tqdm 4.70.1 (both cached)",
+      "conflicts": "None. clip is a git source package, so it is built at install time; size not measured, estimated under 5 MB with ftfy and wcwidth.",
+      "new_download_mb": 2,
+      "new_on_disk_mb": 5
+    }
+  ],
+  "weights": [
+    {
+      "id": "yolo26n-seg.pt",
+      "mb": 6.4,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n-seg.pt"
+    },
+    {
+      "id": "yolo26s-seg.pt",
+      "mb": 22.4,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s-seg.pt"
+    },
+    {
+      "id": "yolo26m-seg.pt",
+      "mb": 52.2,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26m-seg.pt"
+    },
+    {
+      "id": "yolo26n-obb.pt",
+      "mb": 5.6,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n-obb.pt"
+    },
+    {
+      "id": "yolo26s-obb.pt",
+      "mb": 20.7,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s-obb.pt"
+    },
+    {
+      "id": "yolo26n.pt (detect)",
+      "mb": 5.3,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n.pt"
+    },
+    {
+      "id": "yoloe-26n-seg.pt",
+      "mb": 11.2,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26n-seg.pt"
+    },
+    {
+      "id": "yoloe-26s-seg.pt",
+      "mb": 29.6,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26s-seg.pt"
+    },
+    {
+      "id": "yoloe-26m-seg.pt",
+      "mb": 67.2,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26m-seg.pt"
+    },
+    {
+      "id": "yoloe-26s-seg-pf.pt (prompt-free, no text encoder needed)",
+      "mb": 38.1,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26s-seg-pf.pt"
+    },
+    {
+      "id": "yoloe-26m-seg-pf.pt (prompt-free)",
+      "mb": 81.7,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26m-seg-pf.pt"
+    },
+    {
+      "id": "mobileclip2_b.ts (text encoder that YOLOE-26 text prompts need; yoloe-26 yaml sets text_model mobileclip2:b)",
+      "mb": 242,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/mobileclip2_b.ts"
+    },
+    {
+      "id": "mobileclip_blt.ts (text encoder for the older YOLOE-v8 and YOLOE-11 only)",
+      "mb": 572,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/mobileclip_blt.ts"
+    },
+    {
+      "id": "yoloe-11s-seg.pt",
+      "mb": 26.5,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-11s-seg.pt"
+    },
+    {
+      "id": "yoloe-11m-seg.pt",
+      "mb": 57.5,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-11m-seg.pt"
+    },
+    {
+      "id": "FastSAM-s.pt",
+      "mb": 22.7,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/FastSAM-s.pt"
+    },
+    {
+      "id": "FastSAM-x.pt",
+      "mb": 138.3,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/FastSAM-x.pt"
+    },
+    {
+      "id": "mobile_sam.pt (MobileSAM)",
+      "mb": 38.8,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/mobile_sam.pt"
+    },
+    {
+      "id": "sam2.1_t.pt (SAM 2.1 tiny, Ultralytics format)",
+      "mb": 74.5,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/sam2.1_t.pt"
+    },
+    {
+      "id": "sam2.1_s.pt (SAM 2.1 small, Ultralytics format)",
+      "mb": 88,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/sam2.1_s.pt"
+    },
+    {
+      "id": "sam2.1_b.pt (SAM 2.1 base+, Ultralytics format)",
+      "mb": 154.4,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/sam2.1_b.pt"
+    },
+    {
+      "id": "sam2.1_l.pt (SAM 2.1 large, Ultralytics format)",
+      "mb": 428.4,
+      "gated": false,
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/sam2.1_l.pt"
+    },
+    {
+      "id": "facebook/sam2.1-hiera-tiny model.safetensors (transformers format; Meta .pt is 148.8)",
+      "mb": 148.7,
+      "gated": false,
+      "source": "https://huggingface.co/api/models/facebook/sam2.1-hiera-tiny?blobs=true"
+    },
+    {
+      "id": "facebook/sam2.1-hiera-small model.safetensors (Meta .pt is 175.9)",
+      "mb": 175.8,
+      "gated": false,
+      "source": "https://huggingface.co/api/models/facebook/sam2.1-hiera-small?blobs=true"
+    },
+    {
+      "id": "facebook/sam2.1-hiera-base-plus model.safetensors (Meta .pt is 308.6)",
+      "mb": 308.5,
+      "gated": false,
+      "source": "https://huggingface.co/api/models/facebook/sam2.1-hiera-base-plus?blobs=true"
+    },
+    {
+      "id": "facebook/sam2.1-hiera-large model.safetensors (Meta .pt is 856.5)",
+      "mb": 856.3,
+      "gated": false,
+      "source": "https://huggingface.co/api/models/facebook/sam2.1-hiera-large?blobs=true"
+    },
+    {
+      "id": "facebook/sam3 sam3.pt (the file Ultralytics loads; model.safetensors for transformers is 3280.6)",
+      "mb": 3290.2,
+      "gated": true,
+      "source": "https://huggingface.co/api/models/facebook/sam3?blobs=true"
+    },
+    {
+      "id": "facebook/sam3.1 sam3.1_multiplex.pt",
+      "mb": 3340.5,
+      "gated": true,
+      "source": "https://huggingface.co/api/models/facebook/sam3.1?blobs=true"
+    },
+    {
+      "id": "RF-DETR seg nano (rf-detr-seg-nano.pt)",
+      "mb": 128.3,
+      "gated": false,
+      "source": "https://storage.googleapis.com/rfdetr/rf-detr-seg-n-ft.pth"
+    },
+    {
+      "id": "RF-DETR seg small (rf-detr-seg-small.pt)",
+      "mb": 128.8,
+      "gated": false,
+      "source": "https://storage.googleapis.com/rfdetr/rf-detr-seg-s-ft.pth"
+    },
+    {
+      "id": "RF-DETR seg medium (rf-detr-seg-medium.pt)",
+      "mb": 136.4,
+      "gated": false,
+      "source": "https://storage.googleapis.com/rfdetr/rf-detr-seg-m-ft.pth"
+    },
+    {
+      "id": "RF-DETR seg large (rf-detr-seg-large.pt)",
+      "mb": 138.3,
+      "gated": false,
+      "source": "https://storage.googleapis.com/rfdetr/rf-detr-seg-l-ft.pth"
+    },
+    {
+      "id": "RF-DETR seg xlarge (rf-detr-seg-xlarge.pt)",
+      "mb": 145.6,
+      "gated": false,
+      "source": "https://storage.googleapis.com/rfdetr/rf-detr-seg-xl-ft.pth"
+    },
+    {
+      "id": "RF-DETR seg 2xlarge (rf-detr-seg-xxlarge.pt)",
+      "mb": 147.7,
+      "gated": false,
+      "source": "https://storage.googleapis.com/rfdetr/rf-detr-seg-2xl-ft.pth"
+    },
+    {
+      "id": "RF-DETR seg preview (rf-detr-seg-preview.pt)",
+      "mb": 130.5,
+      "gated": false,
+      "source": "https://storage.googleapis.com/rfdetr/rf-detr-seg-preview.pt"
+    },
+    {
+      "id": "RF-DETR detection nano (already on disk in /Users/limgiheon/.roboflow/models)",
+      "mb": 349.3,
+      "gated": false,
+      "source": "https://storage.googleapis.com/rfdetr/nano_coco/checkpoint_best_regular.pth"
+    },
+    {
+      "id": "RF-DETR detection small (already on disk in /Users/limgiheon/.roboflow/models)",
+      "mb": 368.2,
+      "gated": false,
+      "source": "https://storage.googleapis.com/rfdetr/small_coco/checkpoint_best_regular.pth"
+    },
+    {
+      "id": "RF-DETR detection medium",
+      "mb": 386.2,
+      "gated": false,
+      "source": "https://storage.googleapis.com/rfdetr/medium_coco/checkpoint_best_regular.pth"
+    },
+    {
+      "id": "IDEA-Research/grounding-dino-tiny model.safetensors (what from_pretrained fetches; whole repo is 1318.2 because it also holds pytorch_model.bin)",
+      "mb": 657.4,
+      "gated": false,
+      "source": "https://huggingface.co/api/models/IDEA-Research/grounding-dino-tiny?blobs=true"
+    },
+    {
+      "id": "IDEA-Research/grounding-dino-base model.safetensors (whole repo is 1783.7)",
+      "mb": 890.2,
+      "gated": false,
+      "source": "https://huggingface.co/api/models/IDEA-Research/grounding-dino-base?blobs=true"
+    },
+    {
+      "id": "google/owlv2-base-patch16-ensemble model.safetensors (whole repo is 1184.0)",
+      "mb": 591.2,
+      "gated": false,
+      "source": "https://huggingface.co/api/models/google/owlv2-base-patch16-ensemble?blobs=true"
+    }
+  ],
+  "budget": [
+    {
+      "config": "lean",
+      "item": "Python packages, new on disk (set L-pin, Python 3.12, versions pinned to the uv cache; only sqlmodel is new)",
+      "mb": 0.1
+    },
+    {
+      "config": "lean",
+      "item": "Environment overhead that is not shared with the cache (bytecode files; measured 22.5 MB in an existing torch + ultralytics environment, 110 MB in a larger one) - estimate",
+      "mb": 60
+    },
+    {
+      "config": "lean",
+      "item": "clip git package + ftfy + wcwidth for YOLOE text prompts - estimate",
+      "mb": 5
+    },
+    {
+      "config": "lean",
+      "item": "Frontend node_modules - estimate from the existing project's frontend folder (250 MB)",
+      "mb": 250
+    },
+    {
+      "config": "lean",
+      "item": "yolo26n-seg.pt",
+      "mb": 6.4
+    },
+    {
+      "config": "lean",
+      "item": "yolo26s-seg.pt",
+      "mb": 22.4
+    },
+    {
+      "config": "lean",
+      "item": "yolo26n-obb.pt",
+      "mb": 5.6
+    },
+    {
+      "config": "lean",
+      "item": "yoloe-26s-seg.pt",
+      "mb": 29.6
+    },
+    {
+      "config": "lean",
+      "item": "mobileclip2_b.ts (YOLOE-26 text encoder)",
+      "mb": 242
+    },
+    {
+      "config": "lean",
+      "item": "FastSAM-s.pt",
+      "mb": 22.7
+    },
+    {
+      "config": "lean",
+      "item": "mobile_sam.pt",
+      "mb": 38.8
+    },
+    {
+      "config": "lean",
+      "item": "sam2.1_t.pt",
+      "mb": 74.5
+    },
+    {
+      "config": "lean",
+      "item": "App data allowance: uploaded videos, result videos, thumbnails, SQLite (720p H.264 is roughly 15-30 MB per minute) - assumption",
+      "mb": 2000
+    },
+    {
+      "config": "lean",
+      "item": "TOTAL lean (weights 442 MB of it)",
+      "mb": 2757
+    },
+    {
+      "config": "lean",
+      "item": "RESERVE to keep free at all times, on top of the total (warn below 10 GB, refuse uploads and runs below 5 GB)",
+      "mb": 10000
+    },
+    {
+      "config": "full",
+      "item": "Python packages, new on disk (set F-pin, Python 3.12, pinned to the uv cache; timm, accelerate, sqlmodel are new). Unpinned latest versions would be 136.5 MB.",
+      "mb": 11
+    },
+    {
+      "config": "full",
+      "item": "Environment overhead not shared with the cache (bytecode) - estimate",
+      "mb": 120
+    },
+    {
+      "config": "full",
+      "item": "clip git package + ftfy + wcwidth - estimate",
+      "mb": 5
+    },
+    {
+      "config": "full",
+      "item": "Frontend node_modules - estimate",
+      "mb": 250
+    },
+    {
+      "config": "full",
+      "item": "All lean weights",
+      "mb": 442
+    },
+    {
+      "config": "full",
+      "item": "yolo26m-seg.pt + yolo26s-obb.pt",
+      "mb": 72.9
+    },
+    {
+      "config": "full",
+      "item": "yoloe-26m-seg.pt",
+      "mb": 67.2
+    },
+    {
+      "config": "full",
+      "item": "SAM 2.1 small + base+ + large (Ultralytics format: 88.0 + 154.4 + 428.4)",
+      "mb": 670.8
+    },
+    {
+      "config": "full",
+      "item": "RF-DETR segmentation nano + small + medium (128.3 + 128.8 + 136.4)",
+      "mb": 393.5
+    },
+    {
+      "config": "full",
+      "item": "RF-DETR detection nano + small (already on disk, 717.5 MB, no new cost)",
+      "mb": 0
+    },
+    {
+      "config": "full",
+      "item": "Grounding DINO tiny (model.safetensors)",
+      "mb": 657.4
+    },
+    {
+      "config": "full",
+      "item": "Grounding DINO base (model.safetensors)",
+      "mb": 890.2
+    },
+    {
+      "config": "full",
+      "item": "OWLv2 base patch16 ensemble (model.safetensors)",
+      "mb": 591.2
+    },
+    {
+      "config": "full",
+      "item": "App data allowance: uploads, result videos, history - assumption",
+      "mb": 5000
+    },
+    {
+      "config": "full",
+      "item": "Fine-tuning allowance: small labelled dataset plus YOLO training runs - assumption",
+      "mb": 1500
+    },
+    {
+      "config": "full",
+      "item": "TOTAL full (weights 3785 MB of it), SAM 3 excluded",
+      "mb": 10671
+    },
+    {
+      "config": "full",
+      "item": "OPTIONAL, not in the total: SAM 3 (gated, sam3.pt)",
+      "mb": 3290.2
+    },
+    {
+      "config": "full",
+      "item": "RESERVE to keep free at all times, on top of the total",
+      "mb": 10000
+    }
+  ],
+  "env_strategy": "One environment is viable and recommended: a single uv project on Python 3.12, with the heavy families as optional dependency groups (core, ultralytics, rfdetr, hf) and lazy imports.\n\nReasons:\n- All four sets resolve to one consistent set with wheels only (no source builds), with identical versions on 3.12 and 3.13. Adding rfdetr, supervision and transformers forces no downgrade of torch, numpy or ultralytics. rfdetr already requires transformers 5.x, so set D adds only timm and accelerate, and neither is required for Grounding DINO, OWLv2, SAM 2 or SAM 3.\n- Packages cost almost no disk here. uv on this APFS volume uses link mode \"clone\" by default (stated in the installed uv 0.12.22 help text), and I confirmed it: libtorch_cpu.dylib in an existing environment sits on the same physical blocks as the copy in the uv cache. Pinned to cached versions, the lean set needs 0.03 MB of new download and the full set 3.1 MB.\n- Splitting into several environments would save no disk and would add a second interpreter path, more bytecode and more ways to break. Model weights and RAM are the real constraints, not packages.\n\nConditions:\n- Use Python 3.12, not 3.13 or 3.14. The cached torch, numpy, scipy, pillow and matplotlib wheels are cp312 builds; on 3.13 the full set costs 233 MB of download and 862 MB of disk instead of 3 MB and 11 MB.\n- Keep exactly one OpenCV distribution. Use opencv-python (cached, 5.1.0.95) and drop opencv-python-headless from the core list, or use ultralytics-opencv-headless. Never both.\n- Isolate heavy models at run time instead of by environment: load one model at a time and run inference in a worker subprocess so memory is returned when a run ends.\n- A separate environment is only justified if an original research repository is added later (Meta's own sam2 or sam3 package, the original GroundingDINO repo with compiled ops). That is not needed, because ultralytics and transformers already cover those models.",
+  "recommendations": [
+    "Free disk is no longer 5.7 GB. It read 5.7 GB at 03:00 KST, 29.7 GB at 03:09 and 43.3 GB (df avail) from 03:11 to 03:14 on 2026-11-25. The Trash (18.8 GB) was emptied and roughly 19 GB more was freed elsewhere during the probe, not by this probe. Re-check with df before installing; if it holds, both the lean (about 2.8 GB) and full (about 10.7 GB) budgets fit with the 10 GB reserve.",
+    "Memory is the tighter constraint. Swap was 10.2 GB used of 11.3 GB during the probe, in 11 one-gigabyte swap files that share the same APFS container as the data volume. Keep one model loaded at a time, and treat SAM 2.1 large, Grounding DINO base and SAM 3 as high risk on this 16 GB machine.",
+    "Pin to the cached versions. A ready constraints file is at /private/tmp/claude-501/-Users-limgiheon-Desktop-----capstone4-2/448b323c-cfea-4a04-b49e-4f432d2baf4f/scratchpad/probe/cache-constraints-py312.txt, and resolved candidate lists are L-pin-py312-mac15.txt (lean) and F-pin-py312-mac15.txt (full) in the same folder. The scratchpad can be cleared by a reboot, so copy them into the project if they will be used.",
+    "Do not run uv cache clean or uv cache prune before the lab environment exists; the cache is what makes the install nearly free.",
+    "The literal dry-run flags understate what this Mac gets. uv's --python-platform aarch64-apple-darwin assumes macOS 13.0, which hides torch 2.15.0 (macosx_14_0 wheels) and resolves torch 2.11.0, av 15.1.0 and OpenCV 5.0.0.93. A normal install on this Mac (macOS 15.7.9), or a resolve with MACOSX_DEPLOYMENT_TARGET=15.0, gives torch 2.15.0, torchvision 0.29.2, av 19.0.2 and OpenCV 5.1.0.95.",
+    "OpenCV resolves to major version 5 (5.1.0.95) because ultralytics has no upper bound. If any classical pipeline depends on 4.x behaviour, pin opencv-python below 5; no 4.x opencv-python wheel is cached, so that costs a download of roughly 25-40 MB.",
+    "YOLOE text prompts need more than the model file: the mobileclip2_b.ts text encoder (242 MB) and the clip package from git+https://github.com/ultralytics/CLIP.git, which Ultralytics otherwise installs by itself at first use. Declare clip as a dependency so nothing is installed at run time. The prompt-free variants (yoloe-26s-seg-pf.pt, 38.1 MB) need neither.",
+    "SAM 3 is not practical before the competition: both facebook/sam3 and facebook/sam3.1 are gated with manual approval, no Hugging Face token is configured, the weights are 3.3 GB, and through Ultralytics it also needs clip and timm.",
+    "For Grounding DINO, OWLv2 and SAM 2.1 through transformers, load with from_pretrained, which fetches model.safetensors only. Downloading whole repositories doubles the size because they also hold pytorch_model.bin (Grounding DINO tiny 657 MB versus 1318 MB).",
+    "Put every model cache under one app data folder so the lab can show and delete them: set HF_HOME for Hugging Face, RF_HOME for RF-DETR (default /Users/limgiheon/.roboflow/models, which already has detection nano and small), and pass absolute paths for Ultralytics weights.",
+    "The existing Ultralytics settings at /Users/limgiheon/Library/Application Support/Ultralytics/settings.json have a relative weights_dir (\"weights\") and a datasets_dir pointing into the other project. Downloads would land relative to whatever the working directory is. Give the lab its own settings folder with YOLO_CONFIG_DIR rather than editing that file.",
+    "Write result videos with PyAV (the cached av 19.0.2 wheel bundles libx264) or the system ffmpeg (libx264 and h264_videotoolbox are present). The FFmpeg bundled inside the OpenCV wheel has no libx264, so cv2.VideoWriter output may not play in a browser. I did not test an actual encode.",
+    "If more disk is ever needed, the low-risk re-downloadable items add up to about 10 GB: npm cache 2.9 GB, Chrome cache 2.75 GB, VS Code updater staging 1.6 GB, pip cache 1.1 GB, JetBrains caches 0.7 GB, old Playwright Chromium revision 0.55 GB, Homebrew cleanup 0.5 GB. Larger but needing the user's decision: Docker disk image 21.7 GB, Downloads 18.4 GB, the other project's Hugging Face models 2.75 GB.",
+    "Have the app check free disk itself: warn below 10 GB and refuse uploads and runs below 5 GB.",
+    "All sizes are in MiB (bytes / 1,048,576). Weight sizes come from live HTTP headers and the Hugging Face API on 2026-11-25; package sizes come from PyPI wheel sizes, with unpacked sizes read from each wheel's file listing rather than a multiplier. The frontend, bytecode, clip, app-data and fine-tuning rows in the budget are estimates.",
+    "Nothing was installed, deleted or downloaded as weights. The probe used a private uv cache (about 40 MB) inside the probe folder; the whole probe folder is 42 MB."
+  ]
+}

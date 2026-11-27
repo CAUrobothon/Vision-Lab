@@ -1,0 +1,582 @@
+{
+  "geometry_notes": [
+    "Re-checked camera numbers: 1280x720 with a 55 deg diagonal field of view (Logitech's C270 page states 'diagonal 55 deg field of view', 720p/30 fps) gives f = 1410.6 px, horizontal FoV 48.8 deg, vertical 28.6 deg. Scale: 2.347 px/mm on the board (z = 0), 2.449 px/mm on the cube-top plane (z = 25 mm, 576 mm away), 2.363 px/mm on a basket floor (z = 4 mm). A top face is 61.2 px square; the base of the same cube is 58.7 px. All numbers assume the principal point is the image centre and no lens distortion.",
+    "Exact model of a cube blob: for a camera looking straight down, the top face is the base square scaled by 601/576 = 1.0434 about the principal point pp. Both are true squares with the same orientation, and the silhouette is their convex hull (a hexagon). Offset from top-face centre to base centre = (25/601) x (top_centre - pp) = 0.0416 x the pixel radius of the top centre = 0.102 px per mm of ground radius: 10 px at r = 100 mm, 28-30 px at the rim. The four vertical cube edges point exactly at pp.",
+    "Anchor rule that follows from this: the silhouette pixel farthest from pp is always the outer corner of the top face, and the two silhouette edges meeting there are the two outer edges of the top face. So the top face is the face_px x face_px square hanging from that corner toward pp. This holds for every rotation, and for a row or block of flush cubes too (their top faces lie in one plane, so they are flush in the image as well).",
+    "Simulation of that rule (numpy + PIL only, rendered silhouettes, 200-300 random poses over the arena, boundary wobbled by 1 px): the blob centroid misses the true top-face centre by 2.6 mm on average and 5.3 mm at most; the anchored square by 0.3 mm on average, 0.7 mm at the 95th percentile, 1.4 mm at most (0.55 mm average with 2 px wobble, 0.35 mm with a thin spur attached). With paper on the top face only both methods stay under 0.5 mm. Flush same-colour pairs: tiling from the outer corner 0.45 mm average with the count right in 150 of 150 cases; k-means on pixel coordinates followed by anchoring 1.0 mm. This is synthetic noise only and must be confirmed with the radial series in the capture checklist.",
+    "Angle facts: (a) the minimum-area rectangle of the hexagon stays aligned with the cube, because the alternative rectangle aligned with the band is larger by |cos p * sin p| * (2*L^2 - d^2), which is positive while the band d is shorter than L*sqrt(2) = 87 px (it is at most 30 px here). So the band does not bias cv2.minAreaRect: 0.1 deg on clean renders, 1.2 deg mean and 3.4 deg p95 with 1 px boundary noise. (b) PCA or image moments cannot give the angle: a square has isotropic second moments, and with a band the principal axis is the radial direction (12-26 deg mean error in the simulation). (c) a 4-theta circular mean of boundary gradient directions is biased by up to about 3 deg at the rim by the two vertical cube edges. (d) an anti-aliased projection-profile search was the most robust in simulation (0.9 deg mean, 2.3 deg p95) at the cost of about 40 small image rotations per blob.",
+    "Interface with the calibration owner (calibration itself is out of scope, but the vision output must say which plane a pixel is on): the top-face centre lies on z = 25 mm. A board-plane (z = 0) homography applied to it lands 4.34% too far from the point under the camera: 4.3 mm at r = 100 mm, 12.8 mm at r = 295 mm. Either the pixel-to-mm mapping is defined for the z = 25 plane, or vision also exports base_centre = pp + (top_centre - pp) * 576/601. Trap: blob centroid + board homography is off by about 6 mm at the rim, while the corrected top centre + board homography is off by 12.8 mm, so fixing only the vision half makes the final position worse.",
+    "Frame coverage, from the rule drawings (camera lens at x = -13.1, y = 131.4, z = 601 mm in the arena frame, long image axis along arena x): the frame sees x in [-286, 260] and y in [-22, 285] mm on the board, and x in [-274, 248], y in [-16, 278] mm on the cube-top plane. The arena (R 250.5) only just fits: about 60 px spare on the left, but a cube pushed to the right rim near y = 0 has its top face on the right image border (nominally about 1 px over it). Blobs touching the frame border need their own flag and must be anchored on their inner edges. Farthest cube corner: 293 mm from the point under the camera (band 28 px for that cube).",
+    "Fixed scene content that is not a cube: the grey pillar (100.3 x 65.3 mm footprint, 201 mm tall, then the camera mast) starts about 278 px above pp, and its front face fills the top-centre strip up to the frame border (low chroma, medium lightness); the robot base sits about 308 px below pp, so the arm always enters from the bottom centre and anything tall leans radially away from pp; zone grooves are 0.5 mm = 1.2 px wide (faint, at most weak edge clutter); the arena rim has a 0.3 mm step.",
+    "Mission B (drawings 2/3 and 3/3): baskets fill the right half: B 0-20 deg, G 20-50 deg, R 50-90 deg about the robot origin, radius 90-250 mm, walls 7 mm thick with the rim at z = 32 mm, floor at z = 4 mm carrying the printed paper. Visible floor areas are about 10.6 (B), 17.5 (G) and 24.5 (R) cube-face areas, so complete floors fail a size gate of 8 face areas. But B's floor is only about 22 mm wide at its inner end, walls hide a floor strip of about 0.049 x r mm on the side nearer pp, and an arm or a dropped cube can cut a floor into cube-sized pieces. Size alone is therefore no guarantee. Dependable rule: ignore polygons drawn once per camera setup (cubes to detect lie only in x < 0), with the size gate as the second line of defence.",
+    "Mission A tower: the top-face side for a tower of n cubes is 1410.6 * 25 / (601 - 25n) = 61.2, 64.0, 67.0, 70.4, 74.1, 78.2, 82.8, 87.9, 93.8 px for n = 1..9. Adjacent heights differ by only 2.8-5.9 px, so the height should come from the task state, not from the measured size. Zone 2 contains the point under the camera, so towers show little side band near it; at r = 100 mm each side face is a 10-23 px sliver and a 9-cube tower leaves a 140 px radial streak of slivers, which are rejected because their short side is below 0.6 x face_px.",
+    "How many faces carry paper decides what a colour mask looks like. Paper on all sides: blob = top face + a darker band of the same hue (anchor rule needed). Paper on the top only: blob = top face, plus a bare-wood sliver on the pp side that must not become a wood cube, and a colour cube lying on its side would look like a wood cube from above. Wood cubes always show top + band. The design decides per blob by comparing the measured extent with face_px and with face_px + predicted band, so both cases work without a global switch.",
+    "Library facts checked today: PyPI has opencv-python(-headless) 5.1.0.95 (2026-11-17, macOS 15 arm64 wheel 25.8 MB) and 4.14.0.94 (2026-07-29, 46.5 MB); the numpy 2.5.5 wheel is 5.5 MB. The functions named in the pipelines exist in both the 4.x and 5.x headers (in 5.x the contour and shape functions moved to a 'geometry' module but remain cv2.<name> in Python). Exception: the classic ml module moved to opencv_contrib in OpenCV 5, so cv2.ml.EM (Gaussian mixtures) is not in the main 5.x wheel. The angle field returned by cv2.minAreaRect is not portable: 4.7 and 4.12 returned (0, 90], and a fix restoring the documented [-90, 0) was merged on 2025-11-25 for 4.13, so the angle must always be derived from cv2.boxPoints. The lab should store the OpenCV version with every run.",
+    "Not measured: OpenCV is not installed on this machine and installing was out of scope, so every cost figure below is an estimate from experience, not a timing. The lab should time each stage itself. HSV gates and Lab prototype values are likewise starting guesses for printed colours, to be replaced by clicked samples.",
+    "Open questions that change the design (the user asked to be asked before implementation): (1) on how many faces is the paper, and is it matte, glossy or covered with tape? (2) do the placement marks 1-20 exist, and are they outlines, filled shapes or digits, printed or engraved? (3) what colour is the arm (a colour near red, orange, blue or wood produces false blobs)? (4) can exposure and white balance be locked in the capture code on competition day, and on which OS does it run? (5) will vision receive raw or undistorted frames, and with which principal point? (6) does the pixel-to-mm mapping expect a point on z = 0 or on z = 25 mm?"
+  ],
+  "pipelines": [
+    {
+      "id": "hsv_ranges",
+      "name": "HSV colour gates",
+      "idea": "One hue/saturation/value gate per class; each gate yields a binary mask and the class is simply the gate that fired. The fastest and most familiar baseline. Improved over the textbook version with red wrap-around handling, an optional white shift measured on the board, hole filling, a large-region veto for basket floors, and gates that are derived from the clicked colour profile instead of being typed by hand.",
+      "steps": [
+        "`bgr = cv2.GaussianBlur(frame, (blur_ksize, blur_ksize), 0)`. If `wb_normalise`: board median BGR `m` over pixels with HSV S < 40 and V above the frame median, gains `g = m.mean() / m`, `bgr = cv2.convertScaleAbs(bgr * g)`.",
+        "`hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)` (8-bit: H 0-179, S and V 0-255).",
+        "Per class `cv2.inRange(hsv, (h_lo, s_min, v_min), (h_hi, 255, 255))`. Red is two bands joined: `cv2.bitwise_or(cv2.inRange(hsv, (0, s, v), (red_h_hi, 255, 255)), cv2.inRange(hsv, (red_h_lo, s, v), (179, 255, 255)))`. Wood: `cv2.inRange(hsv, (wood_h_lo, wood_s_min, wood_v_min), (wood_h_hi, wood_s_max, 255))`.",
+        "Resolve overlaps in the order R, G, B, wood: `mask_wood = cv2.bitwise_and(mask_wood, cv2.bitwise_not(mask_r | mask_g | mask_b))` (the wood gate is the loosest, so it goes last).",
+        "`cv2.morphologyEx(mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (open_ksize, open_ksize)))`, then `cv2.MORPH_CLOSE` with `close_ksize` (rectangular elements keep corners sharper than elliptical ones).",
+        "`cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)` and redraw every contour with `cv2.drawContours(..., thickness=cv2.FILLED)` so glare holes and printed marks inside a face are filled.",
+        "Per contour: `cv2.contourArea`; drop below `area_min_ratio * face_px^2`; mark as large region (never a cube) above `area_max_ratio * face_px^2`; keep if `area / cv2.contourArea(cv2.convexHull(cnt)) >= solidity_min`.",
+        "Emit one filled mask per contour with its gate class to the shared post-processing (splitting, top face, angle, colour re-check)."
+      ],
+      "params": [
+        {
+          "name": "blur_ksize",
+          "default": "5",
+          "range": "1-11 (odd)",
+          "meaning": "Gaussian blur size in px before thresholding; removes sensor and print-dot noise."
+        },
+        {
+          "name": "wb_normalise",
+          "default": "true",
+          "range": "true | false",
+          "meaning": "Scale the colour channels so the white board becomes neutral before gating."
+        },
+        {
+          "name": "red_h_hi / red_h_lo",
+          "default": "10 / 168",
+          "range": "0-20 / 150-179",
+          "meaning": "Red is hue 0..red_h_hi plus red_h_lo..179 (red straddles the end of the hue scale)."
+        },
+        {
+          "name": "red_s_min / red_v_min",
+          "default": "90 / 60",
+          "range": "30-255 / 0-255",
+          "meaning": "Minimum saturation and brightness for red; raise s_min to keep wood and skin out."
+        },
+        {
+          "name": "green_h_lo / green_h_hi",
+          "default": "38 / 88",
+          "range": "25-60 / 65-100",
+          "meaning": "Hue band of printed green (often yellowish)."
+        },
+        {
+          "name": "green_s_min / green_v_min",
+          "default": "60 / 50",
+          "range": "20-255 / 0-255",
+          "meaning": "Minimum saturation and brightness for green."
+        },
+        {
+          "name": "blue_h_lo / blue_h_hi",
+          "default": "98 / 135",
+          "range": "85-115 / 115-150",
+          "meaning": "Hue band of printed blue (often violet-leaning and dark)."
+        },
+        {
+          "name": "blue_s_min / blue_v_min",
+          "default": "70 / 40",
+          "range": "20-255 / 0-255",
+          "meaning": "Minimum saturation and brightness for blue; keep v_min low because printed blue is dark."
+        },
+        {
+          "name": "wood_h_lo / wood_h_hi",
+          "default": "10 / 30",
+          "range": "5-20 / 20-40",
+          "meaning": "Hue band of bare wood (yellow-orange)."
+        },
+        {
+          "name": "wood_s_min / wood_s_max / wood_v_min",
+          "default": "35 / 140 / 120",
+          "range": "10-120 / 60-255 / 40-255",
+          "meaning": "Wood is weakly saturated and bright; s_min separates it from the white board, s_max from red."
+        },
+        {
+          "name": "open_ksize / close_ksize",
+          "default": "3 / 5",
+          "range": "1-9 / 1-15",
+          "meaning": "Opening removes specks; closing bridges small gaps inside a face."
+        },
+        {
+          "name": "area_min_ratio",
+          "default": "0.4",
+          "range": "0.1-1.0",
+          "meaning": "Smallest blob kept, as a fraction of one top-face area (face_px squared)."
+        },
+        {
+          "name": "area_max_ratio",
+          "default": "8",
+          "range": "2-30",
+          "meaning": "Blobs larger than this many face areas are a large coloured region (basket floor, arm), never cubes."
+        },
+        {
+          "name": "solidity_min",
+          "default": "0.85",
+          "range": "0.5-1.0",
+          "meaning": "Blob area divided by its convex hull area; low values mean a ragged or L-shaped blob."
+        }
+      ],
+      "strengths": [
+        "Fastest pipeline; easily real time on video.",
+        "Easy to understand and to tune live with sliders; the class is known directly from the gate.",
+        "Works well for the three saturated colours while lighting and camera settings stay fixed.",
+        "Good baseline against which every other pipeline can be compared in the run history."
+      ],
+      "failure_modes": [
+        "Lighting, auto-exposure or auto-white-balance changes move S and V (and the hue of wood): a dim or shadowed blue falls under v_min, an overexposed red loses saturation, and the gates need retuning.",
+        "Wood is the weakest class: its gate overlaps a warm-lit white board and warm shadows (hue 10-30, saturation 30-60), giving false wood along shadow edges or missed wood cubes.",
+        "Side band: with paper on the sides the mask is top face + band (fixed downstream); with bare sides a wood sliver appears next to every colour cube (rejected downstream by size).",
+        "Touching cubes of the same colour merge into one blob (split downstream).",
+        "Basket floors pass the gates because they are the same paper; only the large-region veto and the ignore polygons keep them out, and a floor fragment of cube size left by an occluding arm is reported as a cube unless the basket polygon is set.",
+        "Wood side faces in warm light or a hand can pass the red or wood gate when red_s_min is low.",
+        "Glare on glossy paper punches low-saturation holes; they are filled only when fully enclosed, otherwise the blob gets a notch that shifts the angle."
+      ],
+      "cost_ms": "about 6-10 ms at 1280x720 (estimate: blur 1, cvtColor 1-2, five inRange plus morphology 3-4, contours 1-2)"
+    },
+    {
+      "id": "board_diff_lab",
+      "name": "Not-board foreground + Lab nearest prototype",
+      "idea": "Model the board instead of the cubes: every pixel whose chroma differs from the local white board is foreground, and each foreground pixel is labelled with the nearest colour prototype in the a*b* plane. Shadows lower lightness but hardly change chroma, so they stay background; wood is found because it is yellowish relative to the board; neighbours of different colours separate because the label changes. An optional empty-board reference frame makes basket floors, marks and the pillar vanish.",
+      "steps": [
+        "`bgr = cv2.GaussianBlur(frame, (blur_ksize, blur_ksize), 0)`; `lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB)`; as float32 `L = lab[..., 0] * (100 / 255)`, `a = lab[..., 1] - 128`, `b = lab[..., 2] - 128`.",
+        "Board model, `bg_mode = 'self'`: `cv2.resize(L, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_AREA)`, `cv2.morphologyEx(L_small, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (bg_kernel_px // 4 | 1,) * 2))`, `cv2.GaussianBlur`, resize back = `L_bg` (the local white level; closing removes anything darker than the board and smaller than the kernel). Board chroma `(a0, b0)` = median of a, b over pixels with `L > L_bg - 6`.",
+        "Board model, `bg_mode = 'reference'`: `L_bg, a_bg, b_bg` come from a stored empty-board frame taken from the same camera pose, after matching the current frame to it with the median ratio (L) and median offset (a, b) over pixels that did not change. Exposure and white-balance drift cancel, and everything fixed in the scene (basket floors, grooves, marks, pillar) is background.",
+        "`dC = cv2.magnitude(a - a_bg, b - b_bg)` (chroma distance from the board) and `dL = L_bg - L` (how much darker than the board).",
+        "Foreground with hysteresis: `strong = dC > t_chroma_hi`, `weak = (dC > t_chroma_lo) | (dL > t_dark)`; `cv2.connectedComponents(weak)` and keep the weak components that contain at least one strong pixel.",
+        "Label map: a 256x256 lookup table over 8-bit (a, b) holds the index of the nearest prototype, with prototypes shifted by (a0, b0) and entries farther than `t_dist` marked unknown: `cls = lut[lab[..., 1], lab[..., 2]]`, `cls[~fg] = 0`. With `w_L > 0` compute the distance directly on foreground pixels instead of using the table.",
+        "Per class: `cv2.morphologyEx` OPEN (`open_ksize`) then CLOSE (`close_ksize`), `cv2.connectedComponentsWithStats(mask, connectivity=8)`, area gates as in hsv_ranges.",
+        "Side-sliver rule (`drop_side_slivers`): a wood component thinner than 0.6 x face_px that touches a colour component on that component's principal-point side is the bare wooden side face of that cube and is dropped. Emit per-component masks with class and mean prototype distance to the shared post-processing."
+      ],
+      "params": [
+        {
+          "name": "blur_ksize",
+          "default": "5",
+          "range": "1-11 (odd)",
+          "meaning": "Gaussian blur size before the colour tests."
+        },
+        {
+          "name": "bg_mode",
+          "default": "self",
+          "range": "self | reference",
+          "meaning": "Where the board model comes from: estimated from the current frame, or from a stored empty-board frame."
+        },
+        {
+          "name": "bg_kernel_px",
+          "default": "155",
+          "range": "61-301 (odd)",
+          "meaning": "Largest dark object the board model bridges; must exceed a cube with its band and shadow (at least 2.5 x face_px)."
+        },
+        {
+          "name": "t_chroma_hi",
+          "default": "18",
+          "range": "8-40",
+          "meaning": "Chroma distance from the board that surely is an object (seed threshold)."
+        },
+        {
+          "name": "t_chroma_lo",
+          "default": "10",
+          "range": "4-30",
+          "meaning": "Chroma distance that still belongs to an object when connected to a seed; this is the wood-versus-board threshold."
+        },
+        {
+          "name": "t_dark",
+          "default": "100 (off)",
+          "range": "10-100",
+          "meaning": "Lightness drop that counts as foreground on its own (dark objects). Keep off to ignore shadows."
+        },
+        {
+          "name": "t_dist",
+          "default": "30",
+          "range": "10-60",
+          "meaning": "Maximum a*b* distance to the nearest prototype; beyond it the pixel is unknown."
+        },
+        {
+          "name": "w_L",
+          "default": "0",
+          "range": "0-1",
+          "meaning": "Weight of lightness in the prototype distance (0 = hue and chroma only)."
+        },
+        {
+          "name": "open_ksize / close_ksize",
+          "default": "3 / 5",
+          "range": "1-9 / 1-15",
+          "meaning": "Speck removal and gap bridging per class mask."
+        },
+        {
+          "name": "area_min_ratio / area_max_ratio",
+          "default": "0.4 / 8",
+          "range": "0.1-1.0 / 2-30",
+          "meaning": "Blob size limits in top-face areas; above the maximum it is a large region, never a cube."
+        },
+        {
+          "name": "drop_side_slivers",
+          "default": "true",
+          "range": "true | false",
+          "meaning": "Remove thin wood strips attached to a colour cube on the camera-axis side (bare side faces)."
+        }
+      ],
+      "strengths": [
+        "Finds wood and the three colours with one mechanism.",
+        "Shadow tolerant, because the test is on chroma and not on lightness.",
+        "Re-measures the board every frame, so slow white-balance and exposure drift cancel.",
+        "Touching cubes of different colours separate without any geometry.",
+        "In reference mode basket floors, placement marks, grooves and the pillar are not foreground at all."
+      ],
+      "failure_modes": [
+        "Pale or overexposed wood (chroma within about 10 of the board) drops out or gets ragged edges; lowering t_chroma_lo brings in warm-tinted shadows and the faint colour that a red or green cube reflects onto the board next to it.",
+        "Self mode: basket floors are still foreground (same paper), so the large-region veto and ignore polygons are needed exactly as in hsv_ranges.",
+        "Reference mode: any change of camera pose, board position or light direction since the reference was taken creates false foreground along basket walls and grooves; the reference must be re-shot on the day. A cube lying on a basket floor of its own colour is invisible (acceptable by the rules).",
+        "Mixed pixels on the border between a red and a green cube pass through yellow-brown and are labelled wood: 1-2 px lines that opening removes, but they can cut a blob or glue slivers together.",
+        "Touching cubes of the same colour merge (split downstream).",
+        "Coloured arm parts or a hand are foreground and receive the nearest class if within t_dist (skin lies near wood and red).",
+        "If the arm covers most of the frame the board median is wrong and every class shifts."
+      ],
+      "cost_ms": "about 20-30 ms at 1280x720 (estimate: Lab conversion 3-5, float arithmetic 6-8, board model 1-2, label table 2-3, morphology and components 6)"
+    },
+    {
+      "id": "edge_quads",
+      "name": "Edge-bounded squares",
+      "idea": "Ignore colour for detection: find closed regions bounded by edges whose shape is a square of the expected size, then read the colour inside. The top face is separated from the side faces by the shading edge, so this pipeline can return the top face directly, and wood on white is found by its outline rather than its weak colour. Follows the candidate stage of ArUco detection (threshold or edges, contours, polygon approximation, size and convexity filters).",
+      "steps": [
+        "Denoise while keeping edges: `cv2.bilateralFilter(frame, 5, sigma_color, 5)` (OpenCV's own documentation calls d > 5 very slow), or `cv2.GaussianBlur(frame, (5, 5), 0)` for speed.",
+        "`lab = cv2.cvtColor(den, cv2.COLOR_BGR2LAB)`; edges per channel joined: `e = cv2.Canny(lab[..., 0], canny_low, canny_high, apertureSize=3, L2gradient=True) | cv2.Canny(lab[..., 1], canny_low, canny_high) | cv2.Canny(lab[..., 2], canny_low, canny_high)` (the a* and b* edges catch neighbours of equal lightness). Alternative `edge_mode = 'adaptive'`: `cv2.adaptiveThreshold(lab[..., 0], 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, adaptive_block, adaptive_C)` followed by `cv2.morphologyEx(..., cv2.MORPH_GRADIENT, 3x3)`.",
+        "Seal gaps: `e = cv2.dilate(e, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)), iterations=edge_seal)`.",
+        "Regions enclosed by edges: `n, labels, stats, _ = cv2.connectedComponentsWithStats(cv2.bitwise_not(e), connectivity=4)`. Keep labels whose `stats[:, cv2.CC_STAT_AREA]` lies in `[area_min_ratio, area_max_ratio] * face_px^2` and whose bounding box is at most 2.2 x face_px on both sides (done on the stats array at once; the board and the baskets are far too large).",
+        "Shape test per kept region: contour of the region crop with `cv2.findContours`; `box = cv2.boxPoints(cv2.minAreaRect(cnt))`; rectangularity = area / (w * h) >= `min_rectangularity`; quadrilateral by `cv2.approxPolyDP(cnt, approx_eps_ratio * cv2.arcLength(cnt, True), True)` (or `cv2.approxPolyN(cnt, 4)`), which must have 4 vertices, pass `cv2.isContourConvex`, have all sides within `side_tol` of face_px (upper bound widened by the predicted band) and all corners within `angle_tol_deg` of 90 degrees. Grow the quadrilateral by `edge_seal + 0.5` px per side to undo the edge thickness.",
+        "Interior test: standard deviation of a* and b* inside the quadrilateral shrunk by 15% must be <= `t_uniform` (a face has one colour; a piece of the arm or a mark does not).",
+        "Colour from the shared classifier on the interior median; regions classified as board (an empty placement mark, a cell between grooves) or dark are dropped.",
+        "Non-maximum suppression on quadrilateral overlap (`cv2.intersectConvexConvex`) above `nms_iou`; regions with sides close to m x n multiples of face_px are passed on as merged blocks. Emit polygons with class to the shared post-processing."
+      ],
+      "params": [
+        {
+          "name": "denoise",
+          "default": "bilateral",
+          "range": "bilateral | gauss | none",
+          "meaning": "Smoothing before edge detection; bilateral keeps edges sharp but is slower."
+        },
+        {
+          "name": "sigma_color",
+          "default": "35",
+          "range": "10-80",
+          "meaning": "How different two colours may be and still be averaged together by the bilateral filter."
+        },
+        {
+          "name": "edge_mode",
+          "default": "canny_lab",
+          "range": "canny_lab | canny_gray | adaptive",
+          "meaning": "Edge source: Canny on L*, a*, b* joined; Canny on grey only; or adaptive threshold borders."
+        },
+        {
+          "name": "canny_low / canny_high",
+          "default": "30 / 90",
+          "range": "5-100 / 20-250",
+          "meaning": "Hysteresis thresholds on gradient strength; lower values find the faint wood-on-white outline but add clutter."
+        },
+        {
+          "name": "edge_seal",
+          "default": "1",
+          "range": "0-3",
+          "meaning": "Number of 3x3 dilations that close small gaps in outlines (each thickens edges by 1 px per side)."
+        },
+        {
+          "name": "adaptive_block / adaptive_C",
+          "default": "41 / 6",
+          "range": "11-101 (odd) / 1-20",
+          "meaning": "Neighbourhood size and offset of the adaptive threshold (used only in adaptive mode)."
+        },
+        {
+          "name": "approx_eps_ratio",
+          "default": "0.03",
+          "range": "0.01-0.08",
+          "meaning": "Polygon simplification tolerance as a fraction of the perimeter (0.03 is the ArUco default)."
+        },
+        {
+          "name": "side_tol",
+          "default": "0.2",
+          "range": "0.05-0.5",
+          "meaning": "Allowed relative deviation of each side from face_px."
+        },
+        {
+          "name": "angle_tol_deg",
+          "default": "15",
+          "range": "5-30",
+          "meaning": "Allowed deviation of each corner from 90 degrees."
+        },
+        {
+          "name": "min_rectangularity",
+          "default": "0.85",
+          "range": "0.6-1.0",
+          "meaning": "Region area divided by its minimum-area rectangle; 1.0 is a perfect rectangle."
+        },
+        {
+          "name": "t_uniform",
+          "default": "12",
+          "range": "4-30",
+          "meaning": "Maximum colour spread allowed inside a face."
+        },
+        {
+          "name": "area_min_ratio / area_max_ratio",
+          "default": "0.45 / 4.5",
+          "range": "0.2-1.0 / 1.5-10",
+          "meaning": "Region size limits in top-face areas (the upper limit admits flush blocks for splitting)."
+        },
+        {
+          "name": "nms_iou",
+          "default": "0.5",
+          "range": "0.1-0.9",
+          "meaning": "Overlap above which two candidate squares count as the same cube."
+        }
+      ],
+      "strengths": [
+        "Detection does not depend on colour thresholds, so it is the least sensitive to white-balance drift.",
+        "Wood on white is found by its outline even when its colour is close to the board.",
+        "Returns four corners directly and separates the top face from the side band wherever the shading edge is visible.",
+        "Soft shadows produce no Canny edges; basket floors and the board fail the size test by a wide margin."
+      ],
+      "failure_modes": [
+        "Motion blur breaks the outlines, no closed region forms and the cube is missed; expect drop-outs while the arm or a cube is moving.",
+        "Weak contrast: wood on an overexposed board, or the top/side shading edge under very diffuse light. The region then leaks (top + band merge, fixed downstream) or the outline stays open (miss).",
+        "Touching cubes: the seam between two faces is often too faint, giving one 2x1 region (sent to splitting) or an L-shaped region that fails the shape test.",
+        "Glare, printed digits or paper seams inside a face add edges and cut the face into pieces that fail the size test.",
+        "False squares: empty placement marks if they are square outlines, cells between grooves, servo faces or arm parts of cube size (dropped only if their colour is far from every prototype), hard-edged shadows from a point light.",
+        "Edge thickness biases each side by 1-2 px unless compensated, and the thresholds depend on exposure because edge contrast scales with brightness."
+      ],
+      "cost_ms": "about 25-45 ms at 1280x720 (estimate: bilateral 8-15, Lab 3-4, three Canny passes 6-9, components 2-3, per-region checks in Python 3-10)"
+    },
+    {
+      "id": "lab_autocluster",
+      "name": "Self-calibrating colour clustering",
+      "idea": "Let the image state its own colours: remove the board (the dominant mode in the a*b* plane), cluster the remaining pixels with k-means (optionally seeded with the stored prototypes), and name each cluster by the nearest canonical prototype. There are no hue or saturation thresholds, it re-centres itself when the light changes, and its cluster centres are the best tool for choosing prototypes for the other pipelines.",
+      "steps": [
+        "`small = cv2.resize(cv2.GaussianBlur(frame, (5, 5), 0), None, fx=cluster_scale, fy=cluster_scale, interpolation=cv2.INTER_AREA)`; `lab = cv2.cvtColor(small, cv2.COLOR_BGR2LAB)`.",
+        "Board mode: `h = cv2.calcHist([lab], [1, 2], None, [64, 64], [0, 256, 0, 256])`, `cv2.minMaxLoc(h)` gives (a0, b0). Pixels with `hypot(a - a0, b - b0) < board_radius` are board and leave the sample set; otherwise the board's roughly 95% of all pixels dominate the clustering and the small colour classes are lost.",
+        "Samples = remaining pixels inside the arena polygon as float32 rows `(a, b, w_L * L)`. Fewer than `min_samples` means nothing to detect.",
+        "`cv2.setRNGSeed(0)`; `compactness, labels, centers = cv2.kmeans(samples, k_clusters, None, (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.5), attempts, cv2.KMEANS_PP_CENTERS)`. Seeded variant (`init = 'prototypes'`): initial labels = nearest stored prototype (R, G, B, wood, dark), `flags = cv2.KMEANS_USE_INITIAL_LABELS`, one attempt, so the centres slide from the stored prototypes to today's light.",
+        "Optional `method = 'gmm'`: a diagonal-covariance EM written in numpy, started from the k-means result, which copes with clusters of very different size (`cv2.ml.EM` exists only in OpenCV 4.x or the contrib build).",
+        "Name the clusters: each centre takes the class of the nearest canonical prototype if within `name_max_dist`, otherwise 'other' (arm, skin, pillar). Several clusters may share one class (lit and shaded red).",
+        "Full resolution: a 256x256 table over 8-bit (a, b) holding the class of the nearest cluster centre (board radius = background); `cls = lut[lab_full[..., 1], lab_full[..., 2]]`. Per class: OPEN, CLOSE, `cv2.connectedComponentsWithStats`, area gates.",
+        "Video: cluster again every `recluster_every` frames and reuse the centres in between; store the centres with the run so colour drift is visible. Emit masks with class to the shared post-processing."
+      ],
+      "params": [
+        {
+          "name": "cluster_scale",
+          "default": "0.25",
+          "range": "0.125-1.0",
+          "meaning": "Image scale used for clustering; smaller is faster and noisier."
+        },
+        {
+          "name": "k_clusters",
+          "default": "6",
+          "range": "3-10",
+          "meaning": "Number of colour groups looked for besides the board (R, G, B, wood, dark, one spare)."
+        },
+        {
+          "name": "w_L",
+          "default": "0.3",
+          "range": "0-1",
+          "meaning": "Weight of lightness next to a* and b*; 0 ignores brightness completely."
+        },
+        {
+          "name": "board_radius",
+          "default": "8",
+          "range": "3-20",
+          "meaning": "Colour distance around the board colour that is treated as board and removed before clustering."
+        },
+        {
+          "name": "init",
+          "default": "kmeans++",
+          "range": "kmeans++ | prototypes",
+          "meaning": "Start from spread-out random centres, or from the stored colour prototypes."
+        },
+        {
+          "name": "method",
+          "default": "kmeans",
+          "range": "kmeans | gmm",
+          "meaning": "Plain k-means, or k-means refined by a Gaussian mixture."
+        },
+        {
+          "name": "attempts",
+          "default": "3",
+          "range": "1-10",
+          "meaning": "How many random starts k-means tries; the most compact result is kept."
+        },
+        {
+          "name": "name_max_dist",
+          "default": "35",
+          "range": "10-60",
+          "meaning": "Maximum distance from a cluster centre to a prototype for the cluster to receive that class name."
+        },
+        {
+          "name": "min_samples",
+          "default": "300",
+          "range": "50-5000",
+          "meaning": "Minimum number of non-board pixels needed to run clustering."
+        },
+        {
+          "name": "recluster_every",
+          "default": "15",
+          "range": "1-120",
+          "meaning": "On video, cluster again every this many frames."
+        },
+        {
+          "name": "open_ksize / close_ksize",
+          "default": "3 / 5",
+          "range": "1-9 / 1-15",
+          "meaning": "Speck removal and gap bridging per class mask."
+        },
+        {
+          "name": "area_min_ratio / area_max_ratio",
+          "default": "0.4 / 8",
+          "range": "0.1-1.0 / 2-30",
+          "meaning": "Blob size limits in top-face areas."
+        }
+      ],
+      "strengths": [
+        "No hand-set colour thresholds at all.",
+        "Adapts to exposure and white balance on every image; lit and shaded variants of one colour are merged by naming.",
+        "Shows the real cluster centres, which is the quickest way to see what the camera makes of the printed colours and to set prototypes.",
+        "Cheap once the board is removed: only a few thousand samples are clustered."
+      ],
+      "failure_modes": [
+        "k must roughly match what is in view: with a class absent or k too high a real class is split, or a cluster of shadow, skin or arm receives the nearest name (often wood); with k too low wood merges with red or with the shadow cluster.",
+        "Wood that falls inside board_radius of the board mode (pale wood, warm light) is deleted before clustering.",
+        "Random starts cause run-to-run differences and flicker between frames unless the seed is fixed or the seeded variant is used.",
+        "Mission B: the basket floors supply most coloured pixels and pull the centres toward the floor paper; and when only one or two cubes remain there are too few pixels for a stable cluster.",
+        "No notion of shape: merged same-colour cubes, side bands and basket floors pass through to post-processing untouched.",
+        "Naming still needs prototypes that are roughly right (within name_max_dist)."
+      ],
+      "cost_ms": "about 15-25 ms on frames that cluster (estimate: Lab 3-4, k-means on 3-10 thousand samples 3-8, label table 2-3, morphology and components 5-6), about 10-15 ms on the frames in between; the mixture refinement adds 10-30 ms"
+    },
+    {
+      "id": "square_fit",
+      "name": "Known-size rotated square fit",
+      "idea": "Use the strongest prior available: every target is a square of known side length. A rotated square template with a negative surround is correlated with per-class colour score maps for every angle; local maxima over (x, y, angle) are cubes. This yields centre and angle in one step, separates flush same-colour cubes that a distance transform cannot, and completes partly hidden squares from the edges that remain visible.",
+      "steps": [
+        "Score maps at `fit_scale`: run steps 1-4 of board_diff_lab, then for each class k `S_k = fg * exp(-d_k^2 / (2 * sigma_c^2))`, with d_k the a*b* distance to prototype k: four float32 maps in [0, 1].",
+        "Kernel bank for angles 0, `angle_step_deg`, ... below 90: draw a filled rotated square of side `l = face_px * fit_scale` with `cv2.fillConvexPoly` on a 4x canvas and shrink it with `cv2.resize(..., interpolation=cv2.INTER_AREA)` to get `M_in`; the same with side `l + 2 * ring_px * fit_scale` gives `M_out`; kernel `K = M_in / M_in.sum() - surround_weight * (M_out - M_in) / (M_out - M_in).sum()`.",
+        "Candidate windows: `cv2.connectedComponentsWithStats((S_k > 0.3).astype(np.uint8))`; pad every bounding box by l; skip components smaller than 0.3 x l^2.",
+        "Response per window and angle: `R[j] = cv2.filter2D(S_window, cv2.CV_32F, K[j], borderType=cv2.BORDER_CONSTANT)` (filter2D computes a correlation and switches to a DFT implementation for kernels of about 11x11 or larger). Cheaper equivalent: rotate the window with `cv2.warpAffine` and use two `cv2.boxFilter` calls (inner box and outer box).",
+        "Peaks: `Rmax = R.max(0)`, `j = R.argmax(0)`; local maxima where `Rmax == cv2.dilate(Rmax, np.ones((l // 2, l // 2)))` and `Rmax >= t_score`. Refine the angle with a parabola through `R[j-1], R[j], R[j+1]` (indices wrap around at 90 degrees) and the position with the response-weighted centroid of a 3x3 window.",
+        "Outward tie-break: when the side faces share the top colour the response is a ridge along the radial direction; walk from the peak away from the principal point while `R >= (1 - ridge_tol) * R_peak` and take the last position, which is the top face.",
+        "Greedy peeling: accept peaks in descending score; after each acceptance set the accepted square and its predicted band to zero in `S_k` and recompute the response in that window, until no peak reaches `t_score` or `max_per_window` is hit.",
+        "Emit rotated squares (centre, side, angle) as polygons with class and score to the shared post-processing (colour re-check, optional edge refinement). For the tower zone repeat with the sides listed in `levels`."
+      ],
+      "params": [
+        {
+          "name": "fit_scale",
+          "default": "0.5",
+          "range": "0.25-1.0",
+          "meaning": "Image scale at which the fit runs; half size is about four times cheaper."
+        },
+        {
+          "name": "angle_step_deg",
+          "default": "5",
+          "range": "2-15",
+          "meaning": "Angle spacing of the template bank; finer steps cost proportionally more."
+        },
+        {
+          "name": "sigma_c",
+          "default": "12",
+          "range": "5-30",
+          "meaning": "How quickly a pixel's score falls as its colour moves away from the prototype."
+        },
+        {
+          "name": "ring_px",
+          "default": "4",
+          "range": "2-10",
+          "meaning": "Width in full-resolution px of the ring around the square that must be empty."
+        },
+        {
+          "name": "surround_weight",
+          "default": "1.0",
+          "range": "0-2",
+          "meaning": "Penalty for colour found in the ring; higher values insist that the square's edges coincide with the blob's edges."
+        },
+        {
+          "name": "t_score",
+          "default": "0.55",
+          "range": "0.2-0.9",
+          "meaning": "Minimum score (fill inside the square minus weighted fill of the ring) for a detection."
+        },
+        {
+          "name": "ridge_tol",
+          "default": "0.05",
+          "range": "0-0.2",
+          "meaning": "How far the score may drop while sliding outward to the top face."
+        },
+        {
+          "name": "max_per_window",
+          "default": "6",
+          "range": "1-12",
+          "meaning": "Maximum number of cubes peeled from one connected blob."
+        },
+        {
+          "name": "levels",
+          "default": "1",
+          "range": "comma list of 1-9",
+          "meaning": "Stack heights to try; each height uses a correspondingly larger square."
+        }
+      ],
+      "strengths": [
+        "Centre and angle come out together, with no contour analysis.",
+        "Tolerant of ragged masks, glare holes and partial occlusion: two or three visible edges are enough to place the square.",
+        "Separates flush same-colour cubes, the case where distance-transform watershed fails.",
+        "The score is an interpretable number between 0 and 1 and can be shown as a heat map in the lab."
+      ],
+      "failure_modes": [
+        "Depends on face_px: a scale error above about 8-10% (wrong camera height, a stacked cube, raw versus undistorted frames) lowers the scores and shifts centres by half the size error.",
+        "Angle resolution is limited by the step (about 1-2 degrees after interpolation with 5 degree steps), and the angle of a heavily occluded cube is unreliable.",
+        "With same-colour sides the response is a ridge along the radial direction; without the outward tie-break the centre can land anywhere within the band (up to 30 px).",
+        "Large uniform regions: a straight edge scores about 1 - 0.75 x surround_weight and a square corner about 1 - 0.5 x surround_weight, so with the default weight a basket-floor corner scores about 0.5, close to t_score. False cubes at basket-floor corners are likely unless the ignore polygons are set.",
+        "Inherits the colour-score weaknesses of board_diff_lab (pale wood, prototypes that are off).",
+        "Cost grows with windows x angles x classes; brute force over the full frame is too slow for live video."
+      ],
+      "cost_ms": "about 20-50 ms with candidate windows at fit_scale 0.5; about 150-300 ms brute force over the full frame with filter2D; the rotate + boxFilter variant is roughly 3-4 times cheaper (all estimates)"
+    }
+  ],
+  "shared_postprocess": "SHARED POST-PROCESSING: one function for every model (classical pipeline, detector, segmenter). Idea (e), watershed / distance-transform splitting, lives here as Stage 3 because it is a splitter and not a detector.\n\nScene constants (stored once per camera setup, editable in the lab)\n- face_px = 61: side in px of the top face of a cube lying on the board (f * 25 / (601 - 25) = 61.2). If the scale is uncertain, measure it once by dragging along a cube edge.\n- pp = (640, 360): principal point. Replace with cx, cy from the calibration when available. An error of 20 px is harmless: pp only decides on which side to anchor, and that matters only where the band is under 1 px.\n- kappa = 25/601 = 0.0416: the base of a cube is its top face shifted toward pp by kappa * (top_centre - pp), at most 30 px.\n- colour profile (prototypes), arena polygon, ignore polygons (basket floors, pillar, robot base).\nNotation: L = face_px, multiplied by 576 / (576 - 25k) for a cube standing on k others. Cube frame = axes u, v rotated by the cube angle. 'Outer' = the side farther from pp.\n\nStage 0 - any input becomes instance masks\n- Binary mask: `cv2.morphologyEx` OPEN 3 and CLOSE 5, `cv2.connectedComponentsWithStats(mask, connectivity=8)`, fill holes with `cv2.findContours(RETR_EXTERNAL)` + `cv2.drawContours(thickness=cv2.FILLED)`. One instance per component.\n- Polygon or oriented box: `cv2.fillPoly` into a padded crop.\n- Axis-aligned box: a box carries no usable angle. Its width W = L * (|cos t| + |sin t|) gives t only up to the mirror t <-> 90 - t, and the band inflates W. So rebuild a mask inside it: pad the box by 0.25 * L; seed colour = median Lab of the central 40%; dE = Lab distance of every crop pixel to the seed; `cv2.threshold(dE, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)` with the threshold clamped to [10, 30]; keep the component containing the box centre (optional `cv2.grabCut(..., cv2.GC_INIT_WITH_MASK)`, 2 iterations, slow). If that component is smaller than 0.3 x the box area, output the box centre with angle = null and the flag box_only.\n- A class label supplied by the model is kept as model_class; Stage 6 recomputes the colour and reports any disagreement.\n\nStage 1 - gates\n- Centroid inside an ignore polygon or outside the arena polygon (`cv2.pointPolygonTest`): drop, counted as 'ignored'.\n- Area below 0.35 * L^2: drop as noise. Area above max_area_ratio * L^2 (default 8): large_region, never a cube (basket floor, arm).\n- Bounding box within 2 px of the frame edge: flag touches_border. There the outer edge is the frame, not the cube, so anchor on the inner edges and lower the confidence.\n\nStage 2 - coarse angle, modulo 90 degrees\n- Default 'minarearect': `box = cv2.boxPoints(cv2.minAreaRect(cnt))`, angle = atan2 of one box edge reduced modulo 90. Never read the angle field of the returned rectangle: its range differs between OpenCV releases. The band does not tilt this rectangle (see geometry notes).\n- 'profile' (most robust; use when solidity is under 0.93 or the mask is ragged): rotate the mask crop with `cv2.warpAffine` (bilinear) for 0..88 degrees in steps of 2, then +-2 degrees in steps of 0.5 around the best; score = sum of squared differences of the column sums plus the same for the row sums (`cv2.reduce(..., cv2.REDUCE_SUM)`). At the cube-aligned angle the projections have the steepest steps. About 40 small rotations per blob.\n- 'grad4' (cheapest): `cv2.Sobel` gradients of the mask blurred with sigma 2; angle = atan2(sum w*sin(4p), sum w*cos(4p)) / 4 with w = gradient magnitude and p = gradient direction. The resultant length R4 in [0, 1] doubles as a squareness score. Biased by up to about 3 degrees at the rim by the two vertical cube edges.\n- Never PCA or image moments (isotropic for a square; follows the band).\n- Simulated with 1 px boundary noise: minarearect 1.2 deg mean / 3.4 deg p95; profile 0.9 / 2.3; grad4 1.3 / 3.3; PCA 14 deg mean. With 2 px noise grad4 produced occasional gross errors, minarearect and profile did not.\n\nStage 3 - how many cubes are in the blob, and splitting\n- Extents in the cube frame from cross-section profiles: project the mask pixels onto u (and v), count pixels per 1 px slab (`np.bincount`); an edge is where the slab count crosses 0.5 * L, with linear interpolation. Thin spurs (shadow slivers, glare bridges) never reach half a face width, so they do not move the edges. Result: E_u, E_v and which end of each axis is outer.\n- Predicted band per axis: band_u = kappa * |outer_u - pp_u| if the sides share the top colour, else 0 (setting sides_coloured = auto tries both and keeps the better fit).\n- n_u = round((E_u - band_u) / L), n_v likewise. If n_u * n_v >= 2 and area / (E_u * E_v) >= 0.85, it is a flush block: tile it (Stage 4b).\n- Otherwise n = round(area / A_pred) with A_pred = L^2 + L * (band_u + band_v). Area alone is ambiguous at the rim, where a single cube with its band has 1.5-1.65 times the area of a bare top face; that is why the extents minus the predicted band are tried first.\n- If n >= 2 (irregular merge), split in this order and send every part back to Stage 2:\n  1. Seam cut: dark seams between faces from `cv2.morphologyEx(L_channel, cv2.MORPH_BLACKHAT, 7x7 kernel) > seam_t` (default 8) and Canny edges inside the blob eroded by 4 px; remove them from the mask; accept if `cv2.connectedComponents` then gives n parts, each within [0.6, 1.5] * A_pred.\n  2. Distance-transform watershed: `dist = cv2.distanceTransform(mask, cv2.DIST_L2, 5)`; markers = components of `dist > peak_ratio * (L / 2)` (default 0.7) plus one background marker; `cv2.watershed(bgr_crop, markers)`. Works when cubes meet at a corner or with an offset, where a neck exists. It cannot split two flush cubes: the distance map of a 2L x L rectangle is a flat ridge with a single marker.\n  3. `cv2.kmeans` on the pixel coordinates with K = n (`cv2.KMEANS_PP_CENTERS`, 3 attempts): the fallback that always returns n compact parts.\n\nStage 4 - top-face quadrilateral\na. Single cube, per cube axis:\n   - E <= (1 + snap_tol) * L (default snap_tol 0.06): no band on this axis (cube near pp, or paper on the top only). Face interval = the measured [lo, hi].\n   - E > (1 + snap_tol) * L: band present. Face interval = [outer - L, outer]: anchored on the outer edge, discarding band and base.\n   - Optional shading snap (needs the image): warp the blob to the cube frame (`cv2.warpAffine`), take the mean L* profile across the predicted inner edge +-5 px (`cv2.reduce`); if the strongest step exceeds shade_t (default 6 L* units) move the inner edge onto it, clamped to [0.9, 1.1] * L. The same idea is the fallback when face_px is unknown: `cv2.threshold` with `cv2.THRESH_OTSU` on L* inside the blob, keep the brighter class if the split is clearly bimodal, take its largest component, then minAreaRect.\nb. Flush block: tile n_u x n_v squares of side L starting from the outer corner.\nc. Partial blob (E below 0.85 * L on an axis, or area below 0.7 * L^2): flag partial. Keep the anchored square only if both outer edges are supported in Stage 5; otherwise report centre = blob centroid and angle = null. While the arm hides a cube, the dependable answer is the last unoccluded pose (Stage 8).\nSimulated centre error against the true top-face centre, 1 px boundary noise: blob centroid 2.6 mm mean / 5.3 mm max; anchored square 0.3 mm mean / 0.7 mm p95 / 1.4 mm max. In a first test with the inner half hidden and no special handling, both were about 4.4 mm off, which is why partial blobs are flagged rather than trusted.\n\nStage 5 - refinement on the image (optional, refine = edges)\n- For each of the four predicted edges, sample 20 points on its middle 70%; along the edge normal search +-4 px for the strongest gradient of the colour-distance image (Lab distance to the face median). Points above a gradient threshold are 'supported'.\n- `cv2.fitLine(pts, cv2.DIST_HUBER, 0, 0.01, 0.01)` on every edge with at least 10 supported points; edge_support = supported fraction.\n- Angle = 4-theta circular mean of the supported edge directions, weighted by support (the outer edges, which border the white board, dominate). Corners = intersections of the fitted lines; a missing edge is replaced by the line parallel to its opposite edge at distance L. Optional `cv2.cornerSubPix` on the L channel with a 5 px window.\n- In simulation, line fits on mask boundaries alone did not beat the coarse angle once the boundary was noisy (1.1 versus 1.2 degrees), so this stage is only worth running on the image, and whether it pays off must be measured with the rotation series.\n\nStage 6 - colour\n- Median (L, a, b) over the quadrilateral shrunk by 15% per side, then the shared classifier (colour section): class in {R, G, B, wood, unknown} with conf_colour. A result of 'board' or 'dark' drops the candidate (empty placement mark, shadow, servo).\n\nStage 7 - output per cube\n- class; confidence = conf_colour x conf_geom, where conf_geom = min( exp(-((side - L) / (0.1 * L))^2 / 2), rectangularity or R4, edge_support if computed, fraction of the quadrilateral covered by the mask ).\n- quad: four corners, clockwise on screen, starting from the corner with the smallest x + y.\n- centre_top: centre of the quadrilateral, a point on the plane z = 25 mm. centre_base = pp + (centre_top - pp) * (1 - kappa): the same cube on the board plane z = 0. Export both, and agree with the calibration owner which one the pixel-to-mm mapping expects.\n- angle_deg in [0, 90): direction of a face edge measured from image +x toward +y (clockwise on screen), reduced with `a % 90`. Also angle_signed in (-45, 45] for the gripper and for display, so an axis-aligned cube does not flip between 0.4 and 89.7 on screen. Compare two angles with ((a - b + 45) mod 90) - 45. Never average raw angles: average (cos 4a, sin 4a) and divide the resulting angle by 4.\n- side_px; level guess round((601 - f * 25 / side_px) / 25) (indicative only: adjacent levels differ by 3-6 px); flags: band_removed, split_from(n), partial, touches_border, box_only, large_region, held, class_mismatch.\n\nStage 8 - video only\n- Associate detections with tracks by nearest centre (within 0.5 * L). Exponential smoothing (alpha 0.3) of the centre and of (cos 4a, sin 4a); class by majority over the last 9 frames.\n- Confirm a track after 3 hits. When its blob becomes partial or disappears while non-board pixels (the arm) cover its last quadrilateral, keep the last pose with the flag held; delete after 30 misses with no occluder.\n- Run metrics for the lab history: detections per frame, flicker (centre jump above 3 px or angle jump above 5 degrees on a cube that was not moved), ms per stage.\n\nControls to expose: face_px 61 (40-110); pp_x 640, pp_y 360; sides_coloured auto | yes | no; angle_method minarearect | profile | grad4; snap_tol 0.06 (0-0.2); max_area_ratio 8 (2-30); split_method auto | seam | watershed | kmeans; peak_ratio 0.7 (0.4-0.9); seam_t 8 (2-30); shade_snap on | off with shade_t 6 (2-20); refine none | edges; shrink 0.15 (0-0.3); smoothing alpha 0.3 (0.05-1).\nCost (estimate): 0.3-1 ms per blob with minarearect and profile edges, plus 1-2 ms per blob for the profile angle search and about 1 ms for edge refinement; 5-30 ms for 12 cubes.",
+  "colour_classification": "COLOUR CLASSIFICATION (shared by all pipelines; Stage 6 of the post-processing)\n\n1. Colour space and normalisation\n- CIELAB from `cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB)`. For 8-bit images OpenCV stores L*255/100, a+128 and b+128; convert to L in [0, 100] and a, b in [-127, 127].\n- Board-relative coordinates: on every frame measure the white board itself: median (L0, a0, b0) over arena pixels that are bright and nearly neutral (HSV S < 40 and V above the arena median; or the peak of the 64x64 a/b histogram). Then use a' = a - a0, b' = b - b0, Lr = L / L0. The board fills most of the frame, so it is a white reference that is always in view; this cancels white-balance drift and most exposure drift. Prototypes are stored in these coordinates.\n- Features: chroma C = hypot(a', b'), hue h = atan2(b', a') in degrees [0, 360), relative lightness Lr.\n\n2. Decision rule (per cube: median over the shrunk top quadrilateral; per pixel in the label-map pipelines)\n- Nearest prototype: d_k^2 = (a' - a_k)^2 + (b' - b_k)^2 + (w_L * 100 * (Lr - Lr_k))^2, with w_L = 0.3 per cube and 0 per pixel. Classes R, G, B, wood, plus two reject prototypes: board (0, 0, Lr 1.0) and dark (0, 0, Lr 0.35).\n- p_k = exp(-d_k^2 / (2 * 10^2)), normalised over all six; class = the largest; conf_colour = p_best. Report unknown if d_best > 30 or p_best < 0.6. Board or dark means it is not a cube.\n- With several samples per class (see recalibration), d_k is the minimum over that class's samples, which covers lit and shaded variants of one colour.\n- Starting prototypes (L, a, b), to be replaced on site: red (50, 60, 40), green (60, -50, 40), blue (35, 15, -50), wood (75, 8, 28). Printed RGB primaries are duller than screen colours: printed blue leans violet and is dark, printed green leans yellow. These are estimates, not measurements.\n- Equivalent hue rule, for display and sanity checks: red h 10-55 deg with C > 30; wood h 55-95 deg with C 10-40; green h 110-180 deg with C > 25; blue h 250-320 deg with C > 20. In Lab the red hue sits near 30 deg, away from the 0/360 seam, so wrap-around only matters for magenta-leaning reds. Always compare hues with ((h - h_k + 180) mod 360) - 180.\n- In HSV (pipeline hsv_ranges; 8-bit H is 0-179) red does straddle the seam: join two `cv2.inRange` bands (H <= 10 and H >= 168), or rotate the hue with a lookup table `lut[i] = (i + 90) % 180` through `cv2.LUT` and use one band around 90.\n\n3. Wood versus board versus shadow\n- Board: C < 6, Lr near 1. Shadow on the board: C < 8-10 (lightness drops, chroma hardly), Lr 0.4-0.9, soft border. Wood: C about 15-30 at hue 60-90 deg (yellow-orange), Lr 0.65-0.9, and a sharp closed outline of face size.\n- Rule: wood if C >= wood_chroma_min (default 12), the hue is in the wood sector, and the blob passed the size and squareness gates. If C is 7-12 (pale wood, overexposure), accept only with geometric evidence: a closed face-size square from edge_quads with an L* step of at least 4 against the board, and report low confidence.\n- A test that is only 'darker than the board' must never create wood candidates: that is exactly what a shadow looks like.\n- A red or green cube tints the board beside it (chroma 5-12 for a few px). The hysteresis threshold and the size gate keep that out.\n\n4. Robustness to auto-exposure and auto-white-balance\n- First choice is physical: fix exposure, gain and white balance in the capture code if the platform exposes the camera controls. The C270 advertises automatic light correction, so it will re-expose when the arm or a hand enters the view. Whether locking is possible depends on the OS and capture backend used on competition day; this needs confirming with whoever owns capture.\n- In software: board-relative coordinates on every frame; decisions on hue and chroma, lightness only with a small weight; the median of a whole face, never single pixels.\n- Health checks to show in the lab and store with each run: fraction of arena pixels with any channel >= 250 (above 2%: 'overexposed, wood and board become inseparable'); board median L (below 45: 'underexposed'); board chroma hypot(a0, b0) (above 12: 'strong colour cast'); smallest distance between two prototypes (below 20: 'classes too close').\n- Optional slow adaptation: after each detection with confidence above 0.9, move that class's prototype 5% toward the measured value, never more than 12 units from the calibrated one. The seeded k-means of lab_autocluster does the same for all classes at once.\n\n5. Recalibrating on competition day from one image\n- Shoot one frame with one cube of each class on the board (ideally a second set near the arena rim and one set in the arm's shadow).\n- In the lab, click once on each cube (R, G, B, wood) and optionally once on empty board. Per click: `cv2.floodFill` on the blurred Lab image with `cv2.FLOODFILL_FIXED_RANGE | cv2.FLOODFILL_MASK_ONLY`, tolerance (12, 6, 6), limited to a disc of radius 0.6 * face_px around the click; erode by 3 px; require at least 300 px. Fallback: a 15x15 patch around the click.\n- Prototype = median (Lr, a', b') of that region; spread = 1.4826 x median absolute deviation (floor 3). Also store the board values (L0, a0, b0), the image id and the click positions.\n- Derive everything else from the same clicks: the HSV gates for hsv_ranges (hue from the 1st-99th percentile widened by 6, circular for red; S_min = max(30, 5th percentile of S - 40); V_min = max(30, 5th percentile of V - 60)); t_chroma_lo = midpoint between the board's 99th-percentile chroma and wood's 5th-percentile chroma, with a warning when that gap is under 4 ('wood is not separable by colour in this light: rely on edge_quads').\n- Save the result as a named colour profile (JSON) and record the profile id in every run, so any result can be reproduced. Show the a'/b' scatter of samples and prototypes as a sanity plot. Later clicks add samples to the profile instead of replacing it.",
+  "capture_checklist": [
+    "Format for everything below: shoot with the competition camera at the competition pose (601 mm, straight down, 1280x720), stills saved as PNG straight from the capture code, videos 10-20 s at 30 fps in the codec the robot code will read. Phone photos are not a substitute (different field of view, colour and perspective). Name files by condition.",
+    "Empty board, arm parked: Mission A layout, and Mission B layout with empty baskets, once per lighting condition used below. Serves as the reference frame for board_diff_lab, as the picture on which ignore polygons are drawn, and shows false positives from grooves, marks, pillar and basket floors.",
+    "Colour reference: one cube of each class (R, G, B, wood) near the image centre, and the same four near the left rim, the right rim and the pillar. Source for the clicked prototypes; shows how colours change with position.",
+    "Rotation series: one cube per class at 0, 5, 10, 15, 22.5, 30, 40, 45 degrees and at 85-89 degrees, laid on a printed protractor sheet or against a ruler, once at the centre and once at the rim. Measures angle error and exposes the 0/90 wrap-around.",
+    "Radial series: the same cube at about 0, 75, 150, 225 and 290 mm from the point under the camera, once with an edge pointing at the centre and once turned 45 degrees to that direction. Shows the side band growing, tests top-face isolation and the centroid bias, and reveals whether the side faces carry paper.",
+    "Rim and border: cubes pushed against R250 at the far left and far right (y about 0-40 mm) and at the bottom edge. Tests blobs that touch or cross the image border.",
+    "Touching cubes of the same colour, at the centre and at the rim: flush pair, flush pair shifted by half a face, three in a row, 2x2 block, corner against face at 45 degrees, corner against corner. Tests splitting (seam, watershed, tiling, square fit).",
+    "Touching cubes of different colours, flush: R+G, R+B, G+B, each colour with wood, wood with wood. Tests label-map separation, the false wood line between red and green, and seams for edge_quads.",
+    "Wood on white: wood cubes alone at the centre and at the rim under bright (close to overexposure), normal and dim light; a wood cube inside a shadow; a wood cube next to a placement mark and an empty mark by itself. The hardest case: wood versus board versus shadow versus empty slot.",
+    "Lighting set, each with the standard 9-cube and 12-cube layouts: ceiling light only; daylight from a window on one side; a warm lamp from one side (long hard shadows); dim light; a strong lamp or phone torch from above for glare on the paper. If possible shoot each with the camera's automatic modes on and locked.",
+    "Exposure and white-balance transient video: static layout; switch the room light off and on, then move a white sheet and a strongly coloured object through the view. Shows how many frames each pipeline loses while the camera re-adjusts.",
+    "Arm shadow stills: arm held above the cubes without covering them, so its shadow falls on a wood cube, on a colour cube and on empty board next to cubes. Tests shadow rejection.",
+    "Arm occlusion stills: gripper covering about 25, 50 and 75% of a cube from the inner side, from the outer side and over the outer corner; arm across two cubes; arm across a basket floor so the floor is cut into pieces. Tests partial handling and false cubes from floor fragments.",
+    "Gripper holding a cube 3-10 cm above the board, and a cube resting tilted on another cube or against a basket wall. Tests the size logic and non-square tops.",
+    "Mission B full layout: 12 cubes on the left with empty baskets; then 1-3 cubes inside each basket (same colour as the floor and a different colour); a cube right at the x = 0 boundary beside the R basket wall. Checks that basket floors, walls and wall shadows are never reported.",
+    "Mission A tower stills: towers of 1, 2, 3, 5 and 9 cubes in the middle of zone 2 and at its edge, with the top cube slightly rotated or offset, remaining cubes scattered. Tests the larger top face, the radial streak of side faces and the level guess.",
+    "Paper faces: one cube of each colour lying on each of its faces in turn. Answers on how many faces the paper is and whether a colour cube can look like wood from above.",
+    "Negatives: board with only the arm in several poses; a hand; tools, tape, screws, a phone on the board. Counts false positives.",
+    "Motion videos: (a) arm sweeping over a static layout without touching it, slow and fast; (b) one complete pick-and-place; (c) a cube pushed by hand slowly and fast; (d) tapping the table or the camera mast. Tests motion blur, flicker, held tracks and the fixed-camera assumption of the reference mode.",
+    "Full-run videos: one complete Mission A run and one complete Mission B run as they will be performed. Regression clips to replay through every pipeline after each change.",
+    "Ground truth: for 10-15 of the stills, mark the four top-face corners and the class of every cube in the lab. Enables per-pipeline numbers: centre error in px and mm (2.45 px/mm), angle error modulo 90, misses, false positives, class confusion."
+  ],
+  "references": [
+    "https://raw.githubusercontent.com/opencv/opencv/4.x/modules/imgproc/doc/colors.markdown - OpenCV colour conversion formulas: 8-bit HSV stores H/2 (0-179), S and V x255; 8-bit Lab stores L*255/100, a+128, b+128; D65 white point",
+    "https://raw.githubusercontent.com/opencv/opencv/4.x/modules/imgproc/include/opencv2/imgproc.hpp - signatures and documentation text read for minAreaRect (documented angle range [-90, 0)), boxPoints, approxPolyDP, approxPolyN, minEnclosingConvexPolygon, fitLine (M-estimator types, 0.01 for reps/aeps), filter2D (correlation; DFT for kernels of about 11x11 or larger), Canny (both overloads), bilateralFilter (d > 5 very slow), adaptiveThreshold, distanceTransform, watershed (marker format), connectedComponentsWithStats, floodFill flags, grabCut, matchTemplate, intersectConvexConvex",
+    "https://raw.githubusercontent.com/opencv/opencv/4.x/modules/core/include/opencv2/core.hpp - kmeans signature and flags (KMEANS_PP_CENTERS, KMEANS_USE_INITIAL_LABELS)",
+    "https://raw.githubusercontent.com/opencv/opencv/4.x/modules/objdetect/include/opencv2/objdetect/aruco_detector.hpp - ArUco candidate detection defaults (adaptive threshold window 3-23 step 10, constant 7, polygonalApproxAccuracyRate 0.03) used as prior art for edge_quads",
+    "https://raw.githubusercontent.com/opencv/opencv/5.x/modules/geometry/include/opencv2/geometry/2d.hpp - OpenCV 5.x: contour and shape functions (minAreaRect, approxPolyDP, fitLine, convexHull and others) now live in the geometry module",
+    "https://github.com/opencv/opencv/wiki/OpenCV-5 - OpenCV 5 changes: classic ML module moved to opencv_contrib; geometry functions still callable as cv2.<name> in Python",
+    "https://raw.githubusercontent.com/opencv/opencv/5.x/modules/ml/include/opencv2/ml.hpp - returns 404, confirming the ml module is absent from the 5.x main repository",
+    "https://github.com/opencv/opencv/issues/24436 - minAreaRect returned angles in (0, 90] in 4.7.0 and 4.12.0 versus [-90, 0) in 3.3.0",
+    "https://github.com/opencv/opencv/pull/28051 - fix restoring the [-90, 0) angle range, merged into 4.x on 2025-11-25 (milestone 4.13.0)",
+    "https://pypi.org/pypi/opencv-python-headless/json - current releases and wheel sizes: 5.1.0.95 (2026-11-17, macOS 15 arm64, 25.8 MB), 4.14.0.94 (2026-07-29, 46.5 MB)",
+    "https://pypi.org/pypi/numpy/json - numpy 2.5.5 (2026-11-15), macOS arm64 wheel 5.5 MB",
+    "https://www.logitech.com/en-us/shop/p/c270-hd-webcam.960-000694 - Logitech C270: 720p/30 fps, diagonal 55 degree field of view, automatic light correction",
+    "/private/tmp/claude-501/-Users-limgiheon-Desktop-----capstone4-2/448b323c-cfea-4a04-b49e-4f432d2baf4f/scratchpad/rules/img-000.png - rule drawing 1/3: arena, zones, camera lens position x -13.1, y 131.4",
+    "/private/tmp/claude-501/-Users-limgiheon-Desktop-----capstone4-2/448b323c-cfea-4a04-b49e-4f432d2baf4f/scratchpad/rules/img-001.png - rule drawing 2/3: Mission B basket layout",
+    "/private/tmp/claude-501/-Users-limgiheon-Desktop-----capstone4-2/448b323c-cfea-4a04-b49e-4f432d2baf4f/scratchpad/rules/img-002.png - rule drawing 3/3: camera height 601 mm, basket section, cube specification",
+    "/private/tmp/claude-501/-Users-limgiheon-Desktop-----capstone4-2/448b323c-cfea-4a04-b49e-4f432d2baf4f/scratchpad/research/classical_sim/sim_topface2.py - simulation helpers (cube projection, boundary noise, profile edges, anchoring) written for this research",
+    "/private/tmp/claude-501/-Users-limgiheon-Desktop-----capstone4-2/448b323c-cfea-4a04-b49e-4f432d2baf4f/scratchpad/research/classical_sim/sim_topface3.py - simulation that produced the centre, angle and split error figures quoted above (run with /opt/homebrew/bin/python3, numpy + PIL only)",
+    "/private/tmp/claude-501/-Users-limgiheon-Desktop-----capstone4-2/448b323c-cfea-4a04-b49e-4f432d2baf4f/scratchpad/research/opencv_src/ - the OpenCV 4.x and 5.x header files downloaded and read for the facts above"
+  ]
+}

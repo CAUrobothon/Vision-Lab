@@ -1,0 +1,186 @@
+{
+  "checks": [
+    {
+      "claim": "rfdetr 1.12.1 is the current PyPI release (2026-11-12, Apache-2.0), Python >=3.10, core deps torch>=2.2, torchvision>=0.17, transformers>=5.1,<6, supervision>=0.29, pydantic 2, pyDeprecate>=0.9,<0.10",
+      "verdict": "confirmed",
+      "source": "https://pypi.org/pypi/rfdetr/json"
+    },
+    {
+      "claim": "Seg classes RFDETRSegNano/Small/Medium/Large/XLarge/2XLarge exist with defaults 312/384/432/504/624/768 px and 100/100/200/200/300/300 queries; RFDETRSegPreview, RFDETRBase and RFDETRLargeDeprecated are deprecated since 1.7.0 (removal in 2.0); resolution divisor is 24 (12 for Seg Nano, 32 for detection); no oriented-box task in the package",
+      "verdict": "confirmed",
+      "source": "https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/src/rfdetr/variants.py ; https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/src/rfdetr/config.py"
+    },
+    {
+      "claim": "Seg weight names and sizes: rf-detr-seg-nano.pt (from rf-detr-seg-n-ft.pth) 134.5 MB, small 135.0, medium 143.0, large 145.1, xlarge 152.7, 2xlarge 154.9; cache in ~/.roboflow/models, override with RF_HOME (alias ROBOFLOW_HOME); MD5-validated, no token",
+      "verdict": "confirmed",
+      "source": "https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/src/rfdetr/assets/model_weights.py ; HTTP HEAD content-length on https://repo.roboflow.com/rfdetr/rf-detr-seg-{n,s,m,l,xl,2xl}-ft.pth"
+    },
+    {
+      "claim": "Detection .pth downloads: nano 366.3 MB, small 386.0, medium 405.0, large-2026 136.0; keypoint preview 163.7; Hugging Face safetensors Roboflow/rf-detr-nano 121.9, -small 128.5, -medium 134.8; none gated",
+      "verdict": "confirmed",
+      "source": "HTTP HEAD on https://repo.roboflow.com/rfdetr/nano_coco/checkpoint_best_regular.pth (and small_coco, medium_coco, rf-detr-large-2026.pth, rf-detr-keypoint-preview-xlarge.pth) ; https://huggingface.co/api/models/Roboflow/rf-detr-nano?blobs=true"
+    },
+    {
+      "claim": "model.predict(rgb, threshold=..., shape=(H,W), include_source_image=..., antialias=...) returns supervision.Detections with .mask (N,H,W) bool and data[\"class_name\"]; input must be RGB; resize is a plain stretch to the target shape (no letterbox); COCO checkpoints return sparse ids 1-90, fine-tuned ones 0-based",
+      "verdict": "confirmed",
+      "source": "https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/src/rfdetr/detr.py (predict docstring) ; https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/src/rfdetr/_prediction/core.py (F.resize(t, resize_to, antialias=antialias))"
+    },
+    {
+      "claim": "Mask logits come out at 1/4 of the input resolution, are bilinearly upsampled to image size and thresholded at 0 (so a 61 px cube is about 4-5 cells wide at the default 384 px on a 1280-wide frame, about 15 cells on a 720 px square crop)",
+      "verdict": "confirmed",
+      "correction": "Mechanism and arithmetic are right (mask_downsample_ratio=4; F.interpolate bilinear then > 0.0). The conclusion that this is too coarse for corners is the author's inference, not a measurement: the logits are interpolated before thresholding, so the edge is not quantised to whole cells.",
+      "source": "https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/src/rfdetr/models/postprocess.py ; https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/src/rfdetr/config.py"
+    },
+    {
+      "claim": "Fine-tuned weights load with RFDETRSegSmall(pretrain_weights=path) or rfdetr.from_checkpoint(path); checkpoint_best_total.pth is the file to keep; output dir also gets last.ckpt, checkpoint_<epoch>.ckpt (every 10 epochs by default), checkpoint_best_ema/regular.pth, last_ema.pth, training_config.json",
+      "verdict": "confirmed",
+      "correction": "from_checkpoint does not restore the training device, so a Colab (CUDA) checkpoint loads on the Mac. It restores resolution and class names only for checkpoints written by 1.12.x; keep the same rfdetr version on both sides.",
+      "source": "https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/src/rfdetr/__init__.py ; https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/docs/learn/train/index.md"
+    },
+    {
+      "claim": "Training snippet arguments are valid: dataset_dir, epochs, batch_size (integer; \"auto\" is CUDA-only), grad_accum_steps (default now 1), lr, device=\"mps\", num_workers, output_dir, checkpoint_interval, early_stopping, run_test; YOLO-seg dataset (data.yaml + train/valid images+labels) is auto-detected",
+      "verdict": "confirmed",
+      "correction": "TrainConfig forbids unknown keys, so a typo raises. tensorboard=True is the default and only warns if the package is missing.",
+      "source": "https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/src/rfdetr/config.py ; https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/docs/learn/train/dataset-formats.md ; https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/docs/learn/train/training-parameters.md"
+    },
+    {
+      "claim": "Licence: Apache-2.0 for the code, detection Nano/Small/Medium/Large, every Seg size and Keypoint; Atto/Femto/Pico/XL/2XL detection need rfdetr[plus] under PML 1.0",
+      "verdict": "confirmed",
+      "source": "https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/README.md ; https://pypi.org/pypi/rfdetr-plus/json"
+    },
+    {
+      "claim": "MPS is supported: historic issues #29, #223, #362, #622 are closed, PR #821 merged (shipped in 1.6.0, 2026-03-20), 1.12.0 makes model.inference() compile with inductor on MPS by default, issue #1599 (seg confidence swings with small shifts) is open, no open MPS training issue",
+      "verdict": "confirmed",
+      "source": "https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/CHANGELOG.md ; https://github.com/roboflow/rf-detr/issues/622 ; https://github.com/roboflow/rf-detr/pull/821 ; https://github.com/roboflow/rf-detr/issues/1599 ; https://api.github.com/search/issues?q=repo:roboflow/rf-detr+mps+is:issue+is:open"
+    },
+    {
+      "claim": "The only official Apple numbers are for an M4 Max: RFDETRSmall predict() 20.0 ms, TorchScript fp16 12.2 ms, inductor fp16 10.3 ms; Core ML RFDETRSegNano fp16 on the same machine 38.8-44.2 ms",
+      "verdict": "corrected",
+      "correction": "The M4 Max PyTorch numbers are right. But the docs also publish Apple M3 Pro Core ML numbers (RFDETRNano at 384 px: 22.7-27.0 ms on GPU/ALL), and the RFDETRSegNano 38.8 / 44.2 ms figures sit in that M3 Pro section (\"same methodology as the table above\"); the page does not attribute them to the M4 Max. An M3 Pro is closer to a base M4 than an M4 Max is, so about 40 ms for Seg Nano at 312 px through Core ML is the nearest published reference. Nothing is published for PyTorch MPS with Seg models.",
+      "source": "https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/docs/exports/coreml.md ; https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/docs/exports/index.md ; https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/docs/learn/inference.md"
+    },
+    {
+      "claim": "rfdetr 1.12.1 and ultralytics 8.4.218 have no pin conflict in one venv (checked on paper only)",
+      "verdict": "confirmed",
+      "correction": "Now checked by a real resolution (uv 0.12.22, `uv pip compile`, Python 3.12, this macOS; nothing installed): it resolves to torch 2.15.0, torchvision 0.29.2, transformers 5.24.1, supervision 0.32.1, opencv-python 5.1.0.95, numpy 2.5.5, pydeprecate 0.9.0, huggingface-hub 2.4.0, with a single OpenCV wheel. Import was not tested. Resolved list: /private/tmp/claude-501/-Users-limgiheon-Desktop-----capstone4-2/448b323c-cfea-4a04-b49e-4f432d2baf4f/scratchpad/research/fc_rfdetr/req_a2.txt",
+      "source": "https://pypi.org/pypi/rfdetr/json ; https://pypi.org/pypi/ultralytics/json ; local uv resolution"
+    },
+    {
+      "claim": "The OpenCV conflict with Ultralytics appears only with rfdetr[stream] or dfine-seg",
+      "verdict": "refuted",
+      "correction": "rfdetr[train] also pulls opencv-python-headless: its `roboflow` dependency (1.7.3) requires opencv-python-headless>=4.10.0. rfdetr[augment] does too, through albumentations 2.0.8. Resolving `rfdetr[train]==1.12.1` + `ultralytics==8.4.218` yields both opencv-python==5.1.0.95 and opencv-python-headless==5.1.0.95 in one environment (also torch-hungarian==0.1.0rc0, pytorch-lightning 2.6.6). The same happens when dfine-seg is added. Only the base `rfdetr` package (inference) is free of the second wheel. Resolved lists: /private/tmp/claude-501/-Users-limgiheon-Desktop-----capstone4-2/448b323c-cfea-4a04-b49e-4f432d2baf4f/scratchpad/research/fc_rfdetr/req_b.txt and req_c.txt",
+      "source": "https://pypi.org/pypi/roboflow/json ; https://pypi.org/pypi/albumentations/json ; https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/pyproject.toml ; local uv resolution"
+    },
+    {
+      "claim": "antialias pitfall: predict(antialias=False) matches checkpoints trained when rfdetr[augment] is installed; checkpoints trained without it need antialias=True",
+      "verdict": "corrected",
+      "correction": "The trigger is whether Albumentations is importable at training time, not which extra was requested: the default augmentation_backend=\"cpu\" auto-picks Albumentations > Kornia > torchvision. Google Colab preinstalls albumentations 2.0.8, so a Colab-trained checkpoint expects antialias=False (the default), while a checkpoint trained in a clean local venv with only rfdetr[train] expects antialias=True. dfine-seg also installs albumentations into a shared venv. The report's own snippet (rfdetr[train] only, predict without antialias=True) contradicts its pitfall. Pin augmentation_backend=\"torchvision\" or \"albumentations\" in train() and record the matching antialias value per checkpoint.",
+      "source": "https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/docs/learn/train/augmentations.md ; https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/docs/learn/run/segmentation.md ; https://raw.githubusercontent.com/googlecolab/backend-info/main/pip-freeze.txt"
+    },
+    {
+      "claim": "supervision 0.32.1 no longer depends on OpenCV (av>=14.2, scipy, matplotlib, pydeprecate>=0.9,<0.16)",
+      "verdict": "confirmed",
+      "correction": "It ships a supervision._cv2 shim that uses OpenCV when present. 0.32.1 was uploaded on 2026-11-24, one day before this check.",
+      "source": "https://pypi.org/pypi/supervision/json ; https://raw.githubusercontent.com/roboflow/supervision/0.32.1/src/supervision/annotators/core.py"
+    },
+    {
+      "claim": "Version, removal and thread-safety notes: optimize_for_inference() removed in 1.11.0, concurrent cold predict() weight corruption fixed in 1.11.2, source_image moved to detections.metadata, inference() returns a separate predictor holding its own copy of the weights",
+      "verdict": "confirmed",
+      "source": "https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/CHANGELOG.md"
+    },
+    {
+      "claim": "dfine-seg 0.8.0 on PyPI: Apache-2.0, Python >=3.11,<3.14, torch>=2.13, numpy>=2.1.1, opencv-python-headless>=4.10, heavy base deps (wandb, pandas, scikit-learn, albumentations, hydra), 14 releases",
+      "verdict": "confirmed",
+      "source": "https://pypi.org/pypi/dfine-seg/json"
+    },
+    {
+      "claim": "dfine-seg API and weights: load_model(\"n\", task=\"segment\"), read_image (BGR), Visualizer, output dict with labels/boxes/scores/masks [N,H,W], CLI dfine init/split/train/demo/hw_bench; HF ArgoSA/D-FINE-seg dfine_seg_n_coco.pt 17.1 MB, s 48.1, m 85.4, dfine_n_coco.pt 15.5; not gated; Cityscapes weights non-commercial",
+      "verdict": "confirmed",
+      "source": "https://raw.githubusercontent.com/ArgoHA/D-FINE-seg/main/README.md ; https://raw.githubusercontent.com/ArgoHA/D-FINE-seg/main/dfine_seg/__init__.py ; https://huggingface.co/api/models/ArgoSA/D-FINE-seg?blobs=true"
+    },
+    {
+      "claim": "dfine-seg training on MPS is unknown and not documented",
+      "verdict": "corrected",
+      "correction": "The training config template lists it: `train.device: cuda # cuda | cpu | mps`. The default is cuda, so on the Mac it must be changed to mps. Other defaults to watch: amp_enabled True with amp_dtype bfloat16, batch_size -1 (auto), keep_ratio False (stretch, like RF-DETR), to_gray 0.01. Whether MPS training actually runs is still untested.",
+      "source": "https://raw.githubusercontent.com/ArgoHA/D-FINE-seg/main/config.yaml ; https://raw.githubusercontent.com/ArgoHA/D-FINE-seg/main/dfine_seg/dl/train.py"
+    },
+    {
+      "claim": "transformers 5.24.1 (Python >=3.11) has DFineForObjectDetection, Deimv2ForObjectDetection, RTDetrV2ForObjectDetection, LwDetrForObjectDetection and RfDetrForObjectDetection, all box-only; listed HF checkpoints are ungated with the stated sizes",
+      "verdict": "confirmed",
+      "correction": "The same release also has RfDetrForInstanceSegmentation, and Roboflow/rf-detr-seg-nano|small|medium on Hugging Face are transformers checkpoints (134.4 / 134.9 / 142.8 MB). transformers 5.24.1 was uploaded on 2026-11-24.",
+      "source": "https://raw.githubusercontent.com/huggingface/transformers/v5.24.1/docs/source/en/model_doc/rf_detr.md ; https://pypi.org/pypi/transformers/json ; https://huggingface.co/api/models/Roboflow/rf-detr-seg-nano?blobs=true ; https://huggingface.co/api/models/ustc-community/dfine-nano-coco?blobs=true"
+    },
+    {
+      "claim": "libreyolo 1.8.0 (2026-11-15, MIT, Python >=3.10, torch>=2.4, opencv-python>=4.11, RF-DETR family via libreyolo[rfdetr]); weights LibreDFINEn-seg 17.1 MB, LibreRFDETRn-seg 134.5, LibreECs-seg 42.1, LibreRTDETRv2n-obb 16.2, LibreRFDETRn-obb 121.4 (CC BY 4.0); 151 model families",
+      "verdict": "confirmed",
+      "source": "https://pypi.org/pypi/libreyolo/json ; https://raw.githubusercontent.com/LibreYOLO/libreyolo/release/README.md ; https://huggingface.co/api/models/LibreYOLO/LibreRFDETRn-obb?blobs=true"
+    },
+    {
+      "claim": "YOLOv12/YOLOv13 forks have no PyPI package, install from source as a module named ultralytics, rely on flash-attn; licence presumably AGPL-3.0; official Ultralytics ships YOLO12 with pretrained weights for detection only",
+      "verdict": "confirmed",
+      "correction": "The licence is no longer a guess: both repositories carry the GNU AGPL v3 text.",
+      "source": "https://pypi.org/pypi/yolov12/json (404) ; https://pypi.org/pypi/yolov13/json (404) ; https://raw.githubusercontent.com/sunsmarterjie/yolov12/main/README.md ; https://raw.githubusercontent.com/sunsmarterjie/yolov12/main/LICENSE ; https://raw.githubusercontent.com/iMoonLab/yolov13/main/LICENSE ; https://raw.githubusercontent.com/ultralytics/ultralytics/main/docs/en/models/yolo12.md"
+    },
+    {
+      "claim": "A 4-corner YOLO-seg polygon line is also a valid Ultralytics YOLO-OBB label line (stated from memory)",
+      "verdict": "confirmed",
+      "correction": "OBB format is `class_index x1 y1 x2 y2 x3 y3 x4 y4`, normalised; seg format is `class-index x1 y1 ... xn yn`, normalised, at least 3 points. One label file per image serves YOLO-seg, YOLO-OBB, RF-DETR-Seg and D-FINE-seg. Only the folder layout differs (D-FINE-seg wants flat images/ and labels/).",
+      "source": "https://raw.githubusercontent.com/ultralytics/ultralytics/main/docs/en/datasets/obb/index.md ; https://raw.githubusercontent.com/ultralytics/ultralytics/main/docs/en/datasets/segment/index.md"
+    },
+    {
+      "claim": "Roboflow `inference` 1.8.6 pins supervision<0.31, numpy<2.4, opencv-python<4.13, pydantic<2.12 and should stay out of the venv",
+      "verdict": "confirmed",
+      "source": "https://pypi.org/pypi/inference/json"
+    },
+    {
+      "claim": "Wheel sizes for macOS arm64 / Python 3.12: torch 2.15.0 138.6 MB, transformers 5.24.1 13.6 MB, opencv-python 5.1.0.95 25.8 MB (macosx_15_0 tag); torch 2.15.0 and transformers 5.24.1 need Python >=3.11",
+      "verdict": "confirmed",
+      "correction": "torch 2.15.0's arm64 wheel is tagged macosx_14_0 and OpenCV 5.1.0.95 macosx_15_0; both fit macOS 15.7. A resolution aimed at the generic aarch64-apple-darwin target falls back to torch 2.11.0 and opencv-python 5.0.0.93, so resolve on the Mac itself.",
+      "source": "https://pypi.org/pypi/torch/json ; https://pypi.org/pypi/transformers/json ; https://pypi.org/pypi/opencv-python/json ; local uv resolution"
+    },
+    {
+      "claim": "RF-DETR Keypoint (Preview): RFDETRKeypointPreview, 576 px, 40.7 M params, 9.7 ms on T4, 163.7 MB weights, custom schemas via COCO keypoints or YOLO pose labels",
+      "verdict": "confirmed",
+      "source": "https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/README.md ; https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/docs/learn/train/dataset-formats.md"
+    },
+    {
+      "claim": "RT-DETRv3 is PaddlePaddle; RT-DETRv4 (ECCV 2026), upstream D-FINE and DEIMv2 are source-install detectors; EdgeCrafter (TMLR 2026) adds instance segmentation under its own licence; Intellindust/ECSeg_S is 41.9 MB",
+      "verdict": "confirmed",
+      "source": "https://raw.githubusercontent.com/clxia12/RT-DETRv3/main/README.md ; https://raw.githubusercontent.com/RT-DETRs/RT-DETRv4/main/README.md ; https://raw.githubusercontent.com/Intellindust-AI-Lab/EdgeCrafter/main/README.md ; https://huggingface.co/api/models/Intellindust/ECSeg_S?blobs=true"
+    },
+    {
+      "claim": "An L4 does a 4-image RFDETRNano detection training step in 171 ms",
+      "verdict": "unverifiable",
+      "correction": "The figure does not appear in the 1.12.1 changelog, train index or training-parameters pages. The changelog gives other L4 numbers (for example a two-epoch default batch-4 train() call in about 139 s, loader-bound). Treat the derived Colab T4 and M4 training times as guesses.",
+      "source": "https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/CHANGELOG.md"
+    },
+    {
+      "claim": "Base M4 estimates: 40-100 ms per frame eager for Seg at 432-576 px, 1.5-2.5 GB RSS, 30-90 min training on MPS, about 1-1.5 GB installed for torch + rfdetr + ultralytics",
+      "verdict": "unverifiable",
+      "correction": "No primary source gives any of these; the report labels them as its own estimates. They have to be measured in the lab.",
+      "source": "https://raw.githubusercontent.com/roboflow/rf-detr/1.12.1/docs/exports/index.md"
+    },
+    {
+      "claim": "D-FINE-seg is a small project with 247 GitHub stars",
+      "verdict": "unverifiable",
+      "correction": "The unauthenticated GitHub API quota was exhausted during this check and the star count could not be read from the page. The 14 PyPI releases and version 0.8.0 are confirmed.",
+      "source": "https://github.com/ArgoHA/D-FINE-seg"
+    }
+  ],
+  "decision_changing": [
+    "Environment split: installing rfdetr[train] (or rfdetr[augment], or dfine-seg) next to Ultralytics puts opencv-python and opencv-python-headless 5.1.0.95 in the same venv, both owning cv2. Keep the lab's main venv to base `rfdetr==1.12.1` + `ultralytics==8.4.218` (resolves cleanly with one OpenCV wheel: torch 2.15.0, torchvision 0.29.2, transformers 5.24.1, supervision 0.32.1, numpy 2.5.5) and do RF-DETR training on Colab or in a separate venv. Give dfine-seg its own venv or worker process if it is added at all.",
+    "The model registry needs a per-checkpoint `antialias` setting for RF-DETR (as well as the RGB/BGR flag). A checkpoint trained on Colab (albumentations 2.0.8 preinstalled, so the Albumentations resize is used) expects predict(antialias=False); one trained locally with only rfdetr[train] expects antialias=True. The report's snippet gets this wrong for its own recipe. Simplest fix: pass augmentation_backend=\"torchvision\" or \"albumentations\" explicitly in train() and store the matching flag with the weights.",
+    "D-FINE-seg can be pointed at MPS for training (`train.device: mps` in config.yaml; default is cuda), so it is not limited to Colab as the report implies. It is still untested, and its defaults (bfloat16 AMP, auto batch size) may need turning off on the Mac.",
+    "Pin exact versions and do not float to latest: supervision 0.32.1 and transformers 5.24.1 were both published on 2026-11-24, and the resolver picks OpenCV 5.1.0.95 (a 5.x major). A lock file made today (or uv's exclude-newer) avoids a surprise upgrade before 2026-11-29."
+  ],
+  "missed": [
+    "rfdetr[train] depends on the `roboflow` package, which requires opencv-python-headless, and pins the pre-release torch-hungarian==0.1.0rc0 (uv 0.12.22 resolves it without extra flags). The report listed the extra's packages but not this consequence.",
+    "Colab runtime facts that affect the 'train on Colab' plan: Python 3.13.18, torch 2.14.1, transformers 5.23.0, albumentations 2.0.8, and opencv-python, opencv-python-headless and opencv-contrib-python all preinstalled (https://raw.githubusercontent.com/googlecolab/backend-info/main/pip-freeze.txt). `pip install rfdetr[train]` there will upgrade transformers; use the same rfdetr version as on the Mac.",
+    "`dfine demo` binds 0.0.0.0:7860 by default and its Model panel loads any file path the browser sends; the README says to use `--host 127.0.0.1` for local-only use.",
+    "transformers 5.24.1 includes RfDetrForInstanceSegmentation and Roboflow/rf-detr-seg-* checkpoints on Hugging Face, a second loading path for RF-DETR-Seg COCO weights. It does not load a fine-tuned .pth directly, so it is not needed for the lab.",
+    "The docs publish Apple M3 Pro Core ML latencies (RFDETRNano 22.7-27.0 ms; RFDETRSegNano 38.8-44.2 ms in the same section), a closer reference for a base M4 than the M4 Max figures the report relies on.",
+    "D-FINE-seg defaults that matter for colour classes and geometry: to_gray augmentation at 1% probability, keep_ratio False (stretch, the same aspect distortion as RF-DETR), mosaic on by default for segmentation (0.5).",
+    "OpenCV 5.x is what installs today. supervision's own test range for its cv2 shim is opencv >=5,<5.1, so 5.1.0.95 is just outside it, and cv2.minAreaRect angle behaviour in the snippet should be checked on a known rotated square instead of assumed.",
+    "Not verified by this check: that the resolved environment imports and runs on MPS, that model.inference() with inductor compiles on torch 2.15 / macOS 15.7, and any speed or memory figure for the base M4."
+  ]
+}

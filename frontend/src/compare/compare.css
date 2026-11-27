@@ -1,0 +1,157 @@
+.compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.cmp-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 52px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--seam);
+  background: var(--panel);
+}
+
+.cmp-spacer {
+  flex: 1;
+}
+
+.cmp-run {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cmp-tag {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--text);
+  border-radius: 1px;
+  font-size: var(--fs-s);
+  font-weight: 700;
+}
+
+.cmp-tag.dashed {
+  border-style: dashed;
+}
+
+.cmp-run-text {
+  display: grid;
+  min-width: 0;
+  font-size: var(--fs-s);
+}
+
+.cmp-run-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.cmp-run-title:hover {
+  text-decoration: underline;
+}
+
+.cmp-warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: var(--fs-s);
+}
+
+.cmp-viewers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 1px;
+  min-height: 0;
+  background: var(--seam);
+}
+
+.compare.mode-overlay .cmp-viewers {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cmp-pane {
+  min-width: 0;
+  min-height: 0;
+}
+
+.cmp-badge {
+  padding-right: 10px;
+  font-weight: 600;
+}
+
+.cmp-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cmp-legend::before {
+  content: '';
+  width: 22px;
+  border-top: 2px solid var(--text);
+}
+
+.cmp-legend.dashed::before {
+  border-top-style: dashed;
+}
+
+.cmp-panel {
+  min-height: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--seam);
+  background: var(--panel);
+}
+
+.cmp-section {
+  padding: 12px 12px 4px;
+  border-bottom: 1px solid var(--seam);
+}
+
+.cmp-title {
+  margin-bottom: 6px;
+  font-size: var(--fs-m);
+  font-weight: 650;
+}
+
+.cmp-note {
+  margin-bottom: 8px;
+  color: var(--text-2);
+  font-size: var(--fs-s);
+}
+
+.cmp-table th[scope='row'] {
+  position: static;
+  height: 26px;
+  border-bottom: 1px solid var(--seam);
+  background: transparent;
+  color: var(--text-2);
+  font-weight: 500;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cmp-table td {
+  height: 26px;
+}
+
+.cmp-table tbody tr:last-child th,
+.cmp-table tbody tr:last-child td {
+  border-bottom: 0;
+}

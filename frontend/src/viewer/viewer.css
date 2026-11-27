@@ -1,0 +1,569 @@
+/* Viewer: a strictly neutral surround so colours on the media read true. */
+
+.viewer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  background: var(--viewer);
+  overflow: hidden;
+  user-select: none;
+}
+
+.viewer.is-fullscreen {
+  background: #141414;
+}
+
+.viewer-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+
+.viewer-stage:active {
+  cursor: grabbing;
+}
+
+.viewer-stage.tool,
+.viewer-stage.tool:active {
+  cursor: crosshair;
+}
+
+.viewer-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}
+
+.viewer-content > img,
+.viewer-content > video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.viewer-content > .debug-img {
+  position: absolute;
+  inset: 0;
+}
+
+.viewer-content.pixelated > img,
+.viewer-content.pixelated > video,
+.viewer-content.pixelated .ov-debug-img,
+.viewer-content.pixelated .debug-img {
+  image-rendering: pixelated;
+}
+
+.media-frame {
+  position: absolute;
+  pointer-events: none;
+}
+
+.media-frame::after {
+  --reg-c: #5a5a5a;
+  --l: 12px;
+  --t: 1px;
+  inset: -4px;
+}
+
+.pixel-grid {
+  position: absolute;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgb(0 0 0 / 0.35) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(0 0 0 / 0.35) 1px, transparent 1px);
+}
+
+/* ----- overlay ----- */
+.overlay {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* The zoom is a CSS transform on an HTML ancestor, which vector-effect: non-scaling-stroke does
+   not see. Stroke widths are therefore multiplied by --k = 1 / zoom (set on the svg) so they stay
+   constant on screen. */
+
+.ov-halo {
+  fill: none;
+  stroke: rgb(0 0 0 / 0.6);
+  stroke-width: calc(4px * var(--k));
+  stroke-linejoin: round;
+}
+
+.ov-halo.hl {
+  stroke-width: calc(5px * var(--k));
+}
+
+.ov-quad {
+  fill: none;
+  stroke-width: calc(2px * var(--k));
+  stroke-linejoin: round;
+}
+
+.ov-tick {
+  stroke-width: calc(2px * var(--k));
+  stroke-linecap: round;
+}
+
+.ov-dot {
+  stroke: rgb(0 0 0 / 0.7);
+  stroke-width: calc(1.5px * var(--k));
+}
+
+.ov-raw {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.8);
+  stroke-width: calc(1px * var(--k));
+}
+
+.ov-raw.box {
+  stroke: rgb(255 255 255 / 0.55);
+}
+
+.ov-label {
+  fill: #ffffff;
+  stroke: rgb(0 0 0 / 0.85);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.ov-hl {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: calc(2.5px * var(--k));
+}
+
+.ov-hl-fill {
+  fill: rgb(255 255 255 / 0.14);
+  stroke: none;
+}
+
+.ov-roi-dim {
+  fill: rgb(0 0 0 / 0.42);
+}
+
+.ov-roi-line {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.9);
+  stroke-width: calc(1.5px * var(--k));
+}
+
+.ov-debug-tint {
+  fill: var(--mask);
+}
+
+.ov-draft {
+  fill: rgb(255 255 255 / 0.08);
+  stroke: var(--accent);
+  stroke-width: calc(1.5px * var(--k));
+}
+
+.ov-vertex {
+  fill: var(--accent);
+  stroke: #000;
+  stroke-width: calc(1px * var(--k));
+}
+
+.ov-vertex.first {
+  fill: #000;
+  stroke: var(--accent);
+  stroke-width: calc(2px * var(--k));
+}
+
+/* ----- chrome over the media ----- */
+.viewer-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.viewer-badge > * {
+  pointer-events: auto;
+}
+
+.viewer-note {
+  padding: 2px 6px;
+  border-radius: 2px;
+  background: rgb(0 0 0 / 0.72);
+  color: var(--text);
+  font-size: var(--fs-xs);
+}
+
+.viewer-tools {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--seam);
+  border-radius: 2px;
+  background: rgb(20 20 20 / 0.86);
+}
+
+.viewer-tools .btn-quiet {
+  color: var(--text-2);
+}
+
+.viewer-tools .btn-quiet:hover {
+  color: var(--text);
+}
+
+.zoom-readout {
+  min-width: 46px;
+  padding: 0 6px;
+  color: var(--text-2);
+  font-size: var(--fs-s);
+  text-align: right;
+}
+
+.layer-menu {
+  position: relative;
+}
+
+.layer-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: -2px;
+  z-index: 5;
+  width: 240px;
+  padding: 6px;
+  border: 1px solid var(--seam-strong);
+  border-radius: 2px;
+  background: var(--raised);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.5);
+}
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 2px;
+  font-size: var(--fs-s);
+  cursor: pointer;
+}
+
+.layer-row:hover {
+  background: var(--raised-2);
+}
+
+.layer-row input {
+  accent-color: var(--accent);
+  margin: 0;
+}
+
+.layer-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--seam-strong);
+}
+
+.layer-hint {
+  padding: 2px 6px 6px 28px;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.layer-debug {
+  display: grid;
+  gap: 6px;
+  padding: 2px 6px 6px 28px;
+}
+
+.layer-debug .select {
+  width: 100%;
+}
+
+.layer-blend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--fs-xs);
+}
+
+.layer-opacity {
+  display: grid;
+  grid-template-columns: auto 1fr 34px;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-xs);
+  text-align: right;
+}
+
+.tool-hint {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+  padding: 6px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: rgb(14 14 14 / 0.92);
+  color: var(--text-2);
+  font-size: var(--fs-s);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.tool-hint strong {
+  margin-right: 6px;
+  color: var(--text);
+}
+
+.inspector {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  min-width: 168px;
+  padding: 8px 10px;
+  border: 1px solid var(--seam-strong);
+  border-radius: 2px;
+  background: rgb(14 14 14 / 0.9);
+  font-size: var(--fs-s);
+  line-height: 1.6;
+  pointer-events: none;
+}
+
+.viewer:has(.transport) .inspector {
+  bottom: 54px;
+}
+
+.insp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.insp-k {
+  width: 28px;
+  color: var(--text-3);
+}
+
+.insp-swatch {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  border: 1px solid rgb(255 255 255 / 0.4);
+  border-radius: 1px;
+}
+
+/* ----- transport ----- */
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 10px;
+  border-top: 1px solid var(--seam);
+  background: var(--panel);
+}
+
+.transport-frame {
+  min-width: 92px;
+  margin: 0 4px;
+  font-size: var(--fs-s);
+}
+
+.transport-time {
+  min-width: 96px;
+  font-size: var(--fs-s);
+  text-align: right;
+}
+
+.scrub {
+  position: relative;
+  flex: 1;
+  min-width: 80px;
+}
+
+.scrub-marks {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 0;
+  width: calc(100% - 12px);
+  height: 5px;
+  pointer-events: none;
+}
+
+.scrub-marks path {
+  stroke: var(--text-2);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* ----- 정답 layer (Overlay GtMarks, GtCard) ----- */
+.ov-gt-quad {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.92);
+  stroke-width: calc(1.5px * var(--k));
+  stroke-linejoin: round;
+}
+
+.ov-gt-quad.fail,
+.ov-gt-quad.missed {
+  stroke: var(--danger);
+}
+
+.ov-gt-quad.pending {
+  stroke: rgb(255 255 255 / 0.5);
+}
+
+.ov-gt-point {
+  fill: rgb(255 255 255 / 0.92);
+  stroke: rgb(0 0 0 / 0.7);
+  stroke-width: calc(1px * var(--k));
+}
+
+.ov-gt-point.fail,
+.ov-gt-point.missed {
+  fill: var(--danger);
+}
+
+.ov-halo.thin {
+  stroke-width: calc(3px * var(--k));
+}
+
+.ov-gt-link {
+  stroke: rgb(255 255 255 / 0.95);
+  stroke-width: calc(1px * var(--k));
+}
+
+.ov-gt-mp {
+  fill: #ffffff;
+  stroke: rgb(0 0 0 / 0.7);
+  stroke-width: calc(1px * var(--k));
+}
+
+.ov-gt-x {
+  stroke: var(--danger);
+  stroke-width: calc(2px * var(--k));
+  stroke-linecap: round;
+}
+
+.ov-gt-ring {
+  fill: none;
+  stroke: var(--danger);
+  stroke-width: calc(1.5px * var(--k));
+}
+
+.ov-gt-text {
+  font-size: 11px;
+}
+
+.ov-gt-text.bad {
+  fill: #ffd2cc;
+}
+
+.gt-card {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  gap: 3px;
+  width: 268px;
+  padding: 7px 9px;
+  border: 1px solid var(--seam-strong);
+  border-radius: 2px;
+  background: rgb(14 14 14 / 0.9);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.gtc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gtc-pass {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.gtc-set {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gtc-counts {
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+}
+
+.gtc-cube {
+  padding-top: 4px;
+  border-top: 1px solid var(--seam-strong);
+}
+
+.gtc-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.gtc-outcome {
+  margin-left: auto;
+  padding: 0 5px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.gtc-errs {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 12px;
+  margin: 2px 0 0;
+}
+
+.gtc-errs dt {
+  color: var(--text-3);
+}
+
+.gtc-errs dd {
+  margin: 0;
+  text-align: right;
+}
+
+.gtc-crit {
+  font-size: var(--fs-xs);
+}

@@ -1,0 +1,650 @@
+/* 채점 page (ScorePage.tsx, ScoreTables.tsx, ScoreDetail.tsx) and the criteria fields (parts.tsx),
+   which the workbench's live score reuses. Values are tabular; every table scrolls inside its own
+   frame, with the batch / slice column kept in view. */
+
+.score-page {
+  display: grid;
+  gap: 14px;
+  max-width: none;
+  padding: 20px 24px 48px;
+}
+
+.score-page .page-head {
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+.sc-head-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.sc-head-actions a {
+  text-decoration: none;
+}
+
+.sc-notice {
+  max-width: 150ch;
+  word-break: keep-all;
+}
+
+.sc-notice strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.notice code {
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: rgb(0 0 0 / 0.35);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: var(--fs-xs);
+}
+
+/* ----- selection bar ----- */
+.sc-bar {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--seam);
+  border-radius: 2px;
+  background: var(--panel);
+}
+
+.sc-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+}
+
+.sc-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--fs-s);
+}
+
+.sc-field .select {
+  width: 240px;
+}
+
+.sc-field:nth-child(2) .select,
+.sc-field:nth-child(3) .select {
+  width: 300px;
+}
+
+.sc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: var(--fs-s);
+}
+
+.sc-status.busy {
+  color: var(--text);
+}
+
+.sc-status .sc-loading-bar {
+  width: 64px;
+}
+
+/* batch checkboxes */
+.sc-batches {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px 14px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sc-batches legend {
+  float: left;
+  padding: 4px 0 0;
+}
+
+.sc-batch-list {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  max-height: 96px;
+  overflow-y: auto;
+}
+
+.sc-batch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 300px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--seam-strong);
+  border-radius: 2px;
+  color: var(--text-3);
+  font-size: var(--fs-s);
+  cursor: pointer;
+}
+
+.sc-batch-chip:hover {
+  border-color: #4a4a4a;
+  color: var(--text-2);
+}
+
+.sc-batch-chip.on {
+  border-color: var(--text-3);
+  color: var(--text);
+}
+
+.sc-batch-chip input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.sc-batch-chip .ds-scope {
+  max-width: 96px;
+}
+
+.sc-chip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-batch-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.sc-id {
+  display: inline-block;
+  min-width: 4ch;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----- states ----- */
+.sc-loading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--seam);
+  border-radius: 2px;
+  background: var(--panel);
+  color: var(--text-2);
+  font-size: var(--fs-s);
+}
+
+.sc-loading-bar {
+  flex: none;
+  width: 120px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--seam-strong) 0%, var(--accent) 50%, var(--seam-strong) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+.sc-empty {
+  padding: 12px;
+  border: 1px dashed var(--seam-strong);
+  border-radius: 2px;
+  color: var(--text-3);
+  font-size: var(--fs-s);
+}
+
+.sc-state-note {
+  align-items: center;
+}
+
+/* ----- sections ----- */
+.sc-section {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 6px;
+  transition: opacity 160ms var(--ease);
+}
+
+.sc-section.stale {
+  opacity: 0.55;
+}
+
+.sc-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.sc-section-note {
+  font-size: var(--fs-s);
+  word-break: keep-all;
+}
+
+.sc-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  font-size: var(--fs-s);
+}
+
+.sc-picker {
+  width: 260px;
+}
+
+.sc-detail-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sc-detail-pick .select {
+  width: 320px;
+}
+
+/* ----- tables ----- */
+.sc-table-wrap {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--seam);
+  border-radius: 2px;
+  background: var(--panel);
+}
+
+.sc-table {
+  table-layout: fixed;
+  width: 1px; /* fixed layout: the columns' widths decide; min-width fills the frame */
+  min-width: 100%;
+}
+
+.sc-table th {
+  position: static;
+  height: auto;
+  padding: 6px 8px;
+  vertical-align: bottom;
+  white-space: normal;
+  word-break: keep-all;
+  line-height: 1.3;
+}
+
+.sc-table tbody th {
+  vertical-align: top;
+}
+
+.sc-table td {
+  height: auto;
+  padding: 7px 8px;
+  vertical-align: top;
+}
+
+.sc-table tbody tr:hover > * {
+  background-color: var(--raised);
+}
+
+.sc-col-ratio {
+  width: 88px;
+}
+
+.sc-col-stat {
+  width: 84px;
+}
+
+.sc-col-batch {
+  width: 160px;
+}
+
+.sc-table .sc-axis {
+  border-left: 1px solid var(--seam-strong);
+  color: var(--text-2);
+  font-weight: 600;
+  text-align: center;
+}
+
+.sc-table .sc-mh {
+  text-align: right;
+}
+
+.sc-table .sc-ax0 {
+  border-left: 1px solid var(--seam-strong);
+}
+
+.sc-table .sc-mh-group {
+  text-align: center;
+}
+
+.sc-sub {
+  color: var(--text-3);
+  font-weight: 450;
+}
+
+.sc-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--panel);
+}
+
+.sc-rank-h,
+.sc-rank-c {
+  left: 0;
+}
+
+.sc-batch-h,
+.sc-batch-c {
+  left: 44px;
+  box-shadow: 1px 0 0 var(--seam-strong);
+}
+
+.sc-batch-h0,
+.sc-batch-c0,
+.sc-slice-h,
+.ps-src,
+.ps-src-h {
+  left: 0;
+  box-shadow: 1px 0 0 var(--seam-strong);
+}
+
+.sc-batch-h,
+.sc-batch-h0 {
+  text-align: left;
+}
+
+.sc-rank-c {
+  color: var(--text);
+  font-size: var(--fs-l);
+  font-weight: 700;
+}
+
+.sc-rank tbody tr.is-ref > td {
+  background-color: var(--raised);
+}
+
+.sc-m {
+  text-align: right;
+}
+
+.sc-v {
+  display: block;
+  color: var(--text);
+  font-size: var(--fs-m);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sc-n {
+  display: block;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+/* batch names */
+.sc-bname {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sc-bline {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sc-model {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-bmeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: var(--fs-xs);
+}
+
+.sc-bmeta .ds-scope {
+  max-width: 110px;
+}
+
+.sc-role {
+  padding: 0 5px;
+  border: 1px solid var(--seam-strong);
+  border-radius: 2px;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  line-height: 16px;
+}
+
+.sc-role.ref {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sc-why {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  white-space: normal;
+}
+
+.tag-interim {
+  padding: 0 5px;
+  border: 1px dashed var(--text-3);
+  border-radius: 2px;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.sc-state {
+  white-space: normal;
+}
+
+.sc-state-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sc-reason {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+}
+
+/* slices and augmentation */
+.sc-group > th {
+  padding: 5px 8px;
+  background: var(--raised);
+  color: var(--text-2);
+  font-weight: 600;
+  text-align: left;
+}
+
+.sc-sticky-row {
+  position: sticky;
+  left: 0;
+}
+
+.sc-undefined td {
+  color: var(--text-3);
+  font-size: var(--fs-s);
+  white-space: normal;
+}
+
+.sc-slice-h {
+  color: var(--text);
+  font-weight: 500;
+  text-align: left;
+  vertical-align: top;
+}
+
+.sc-slice-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sc-table .sc-bh {
+  text-align: right;
+}
+
+/* Slices, augmentation and per source: as wide as their columns, not the page. */
+.sc-table-wrap.fit {
+  width: fit-content;
+}
+
+.sc-table-wrap.fit .sc-table {
+  min-width: 0;
+}
+
+.sc-bh .tag-interim {
+  margin-left: 4px;
+}
+
+.sc-bh-name {
+  color: var(--text);
+}
+
+/* per source */
+.ps-table .ps-src-h,
+.ps-table .ps-src {
+  width: 210px;
+}
+
+.ps-src {
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 500;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ps-vh {
+  width: 104px;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ps-table td.ps-cell {
+  padding: 0;
+  text-align: center;
+}
+
+.ps-table td.ps-none {
+  color: var(--text-3);
+  vertical-align: middle;
+}
+
+.ps-cell.fail {
+  background: rgb(255 128 112 / 0.07);
+}
+
+.ps-open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 32px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.ps-open:hover {
+  background: var(--raised-2);
+}
+
+.ps-open:focus-visible {
+  outline-offset: -2px;
+}
+
+.ps-counts {
+  color: var(--text-2);
+}
+
+.pass-icon {
+  flex: none;
+}
+
+/* per image */
+.im-wrap {
+  max-height: 460px;
+}
+
+.im-table {
+  table-layout: auto;
+  width: 100%;
+}
+
+.im-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  vertical-align: middle;
+}
+
+.im-table td {
+  vertical-align: middle;
+}
+
+.im-table tbody tr {
+  cursor: pointer;
+}
+
+.im-name {
+  color: var(--text);
+}
+
+.im-name-c {
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.im-pass {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.im-pass.ok {
+  color: var(--text-2);
+}
+
+.im-pass.fail {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.im-bad {
+  color: var(--bad);
+  font-weight: 600;
+}
